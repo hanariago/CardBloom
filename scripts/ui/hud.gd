@@ -36,19 +36,20 @@ func _build_ui() -> void:
 	bg.size = Vector2(1920, 60)
 	add_child(bg)
 
-	# 점수 (중앙)
-	_score_label = _make_label("0", Vector2(760, 6), 46, true)
-	_score_label.custom_minimum_size = Vector2(400, 48)
+	# 점수 (중앙 크게)
+	_score_label = _make_label("0", Vector2(710, 4), 52, true)
+	_score_label.custom_minimum_size = Vector2(500, 54)
 	_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
-	# 목표 점수 (점수 우측)
-	_target_label = _make_label("목표: 0", Vector2(1175, 16), 26)
+	# 목표 점수 (점수 우측, 강조)
+	_target_label = _make_label("목표: 0", Vector2(1220, 14), 30)
+	_target_label.add_theme_color_override("font_color", Color(0.85, 0.70, 0.35))
 
 	# 턴 (좌측)
-	_turn_label = _make_label("턴 1 / 10", Vector2(40, 16), 26)
+	_turn_label = _make_label("턴 1 / 10", Vector2(340, 14), 30)
 
 	# 엽전 (우측)
-	_coins_label = _make_label("엽전 0", Vector2(1680, 16), 26)
+	_coins_label = _make_label("엽전 0", Vector2(1530, 14), 28)
 
 	# 기운 카드 슬롯
 	_build_ki_slots()

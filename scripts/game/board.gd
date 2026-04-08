@@ -75,26 +75,34 @@ func _build_static_ui() -> void:
 	add_child(mountain_bg)
 
 	_mountain_label = Label.new()
-	_mountain_label.position = Vector2(MOUNTAIN_X - 36, MOUNTAIN_Y - 24)
-	_mountain_label.size = Vector2(72, 48)
+	_mountain_label.position = Vector2(MOUNTAIN_X - 46, MOUNTAIN_Y - 28)
+	_mountain_label.size = Vector2(92, 56)
 	_mountain_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_mountain_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_mountain_label.text = "산패\n30"
+	_mountain_label.add_theme_color_override("font_color", Color(0.85, 0.85, 1.0))
 	_mountain_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	UITheme.apply_pretendard(_mountain_label, 16)
+	UITheme.apply_pretendard(_mountain_label, 22)
 	add_child(_mountain_label)
 
-	# 수집 영역 라벨
+	# 수집 영역 라벨 — 크고 명확하게
 	var types  := ["gwang", "ribbon", "animal", "pi"]
-	var labels := ["光 광", "帶 띠", "動 열끗", "皮 피"]
+	var label_texts := ["光 광", "帶 띠", "動 열끗", "皮 피"]
+	var label_colors := [
+		Color(0.97, 0.84, 0.20),   # 광 — 금색
+		Color(0.92, 0.35, 0.35),   # 띠 — 붉은
+		Color(0.35, 0.75, 0.98),   # 열끗 — 청색
+		Color(0.72, 0.72, 0.75),   # 피 — 회색
+	]
 	_collected_labels = {}
 	for i in types.size():
 		var lbl := Label.new()
-		lbl.position = Vector2(COLLECTED_X, COLLECTED_Y + i * 38)
-		lbl.add_theme_color_override("font_color", Color.WHITE)
-		lbl.text = "%s: 0" % labels[i]
+		lbl.position = Vector2(COLLECTED_X - 10, COLLECTED_Y + i * 48)
+		lbl.size = Vector2(160, 44)
+		lbl.add_theme_color_override("font_color", label_colors[i])
+		lbl.text = "%s: 0" % label_texts[i]
 		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		UITheme.apply_pretendard(lbl, 17)
+		UITheme.apply_pretendard(lbl, 24)
 		add_child(lbl)
 		_collected_labels[types[i]] = lbl
 
