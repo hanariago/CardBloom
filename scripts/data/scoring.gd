@@ -7,6 +7,8 @@ extends RefCounted
 class ScoreBreakdown:
 	var base_score: int = 0       # 광+피 기본 합산
 	var combo_bonus: int = 0      # 족보 보너스 합계
+	var ki_bonus: int = 0         # 기운 카드 플랫 보너스
+	var ki_multiplier: float = 1.0 # 기운 카드 배율 (홍단신 등)
 	var total_score: int = 0
 	var combos: Array[ComboEntry] = []  # 달성한 족보 목록
 
@@ -18,8 +20,21 @@ class ScoreBreakdown:
 		combos.append(entry)
 		combo_bonus += points
 
+	## 기운 카드 플랫 보너스
+	func add_ki_bonus(name: String, points: int) -> void:
+		var entry := ComboEntry.new(name, points)
+		combos.append(entry)
+		ki_bonus += points
+
+	## 기운 카드 배율 적용 (누적 곱)
+	func apply_ki_multiplier(name: String, mult: float) -> void:
+		var preview := int((base_score + combo_bonus + ki_bonus) * (ki_multiplier * mult - ki_multiplier))
+		var entry := ComboEntry.new(name, preview)
+		combos.append(entry)
+		ki_multiplier *= mult
+
 	func finalize() -> void:
-		total_score = base_score + combo_bonus
+		total_score = int((base_score + combo_bonus + ki_bonus) * ki_multiplier)
 
 
 class ComboEntry:
@@ -53,6 +68,19 @@ static func calculate(collected: Dictionary) -> ScoreBreakdown:
 	_check_animal_combos(animal_cards, breakdown)
 	_check_pi_combo(pi_cards, breakdown)
 
+	breakdown.finalize()
+	return breakdown
+
+
+## 기운 카드 효과 포함 점수 계산
+static func calculate_with_ki(collected: Dictionary, ki_cards: Array) -> ScoreBreakdown:
+	var breakdown := calculate(collected)
+	# finalize() 전 상태로 되돌려서 ki 적용 후 재계산
+	breakdown.ki_bonus = 0
+	breakdown.ki_multiplier = 1.0
+	# combos에서 ki 항목만 제거 (아직 없으므로 그냥 진행)
+	for ki in ki_cards:
+		(ki as KiCardData).apply_to_breakdown(breakdown, collected)
 	breakdown.finalize()
 	return breakdown
 

@@ -149,6 +149,11 @@ func animate_mountain_flip(card: CardData.Card, matched: bool) -> void:
 		)
 
 
+## 바닥 패 갱신 (턴 처리 후 호출)
+func refresh_floor(floor_cards: Array) -> void:
+	_place_floor(floor_cards)
+
+
 ## 손패에서 카드 제거
 func remove_from_hand(card_node: CardNode) -> void:
 	_hand_nodes.erase(card_node)

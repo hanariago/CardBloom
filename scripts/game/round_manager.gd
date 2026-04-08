@@ -205,7 +205,8 @@ func _flip_mountain() -> void:
 
 
 func _end_turn() -> void:
-	var breakdown := Scoring.calculate(_collected)
+	var ki_cards: Array = GameManager.current_run.ki_cards if GameManager.current_run else []
+	var breakdown := Scoring.calculate_with_ki(_collected, ki_cards)
 	var current_score := int(breakdown.total_score * _go_stop.get_score_multiplier())
 
 	# 고 중에 목표 달성 못하면 실패 체크 (고 선택 후 추가 턴 소진)
@@ -249,7 +250,11 @@ func _collect(played_card: CardData.Card, floor_cards: Array[CardData.Card]) -> 
 func _score_and_end() -> void:
 	state = State.SCORING
 
-	var breakdown := Scoring.calculate(_collected)
+	var ki_cards: Array = []
+	if GameManager.current_run != null:
+		ki_cards = GameManager.current_run.ki_cards
+
+	var breakdown := Scoring.calculate_with_ki(_collected, ki_cards)
 	var multiplier := _go_stop.get_score_multiplier()
 	var final_score := int(breakdown.total_score * multiplier)
 
