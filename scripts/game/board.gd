@@ -37,6 +37,7 @@ func _build_static_ui() -> void:
 	mountain_bg.size = Vector2(CARD_W, CARD_H)
 	mountain_bg.position = Vector2(MOUNTAIN_X - CARD_W * 0.5, MOUNTAIN_Y - CARD_H * 0.5)
 	mountain_bg.color = Color(0.2, 0.2, 0.3)
+	mountain_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(mountain_bg)
 
 	_mountain_label = Label.new()
@@ -44,6 +45,7 @@ func _build_static_ui() -> void:
 	_mountain_label.add_theme_font_size_override("font_size", 20)
 	_mountain_label.text = "산패\n30"
 	_mountain_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_mountain_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_mountain_label)
 
 	# 수집 영역 라벨 (4가지 유형)
@@ -56,6 +58,7 @@ func _build_static_ui() -> void:
 		lbl.add_theme_font_size_override("font_size", 18)
 		lbl.text = "%s: 0" % labels[i]
 		lbl.add_theme_color_override("font_color", Color.WHITE)
+		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(lbl)
 		_collected_labels[types[i]] = lbl
 
@@ -69,6 +72,7 @@ func _draw_area_labels() -> void:
 	floor_label.position = Vector2(900, FLOOR_Y - CARD_H * 0.5 - 30)
 	floor_label.add_theme_font_size_override("font_size", 16)
 	floor_label.modulate = Color(1, 1, 1, 0.5)
+	floor_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(floor_label)
 
 	var hand_label := Label.new()
@@ -76,6 +80,7 @@ func _draw_area_labels() -> void:
 	hand_label.position = Vector2(900, HAND_Y - CARD_H * 0.5 - 30)
 	hand_label.add_theme_font_size_override("font_size", 16)
 	hand_label.modulate = Color(1, 1, 1, 0.5)
+	hand_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hand_label)
 
 

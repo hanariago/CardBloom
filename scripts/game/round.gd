@@ -25,6 +25,7 @@ func _build_scene() -> void:
 	var bg := ColorRect.new()
 	bg.color = Color(0.10, 0.10, 0.18)
 	bg.size = Vector2(1920, 1080)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
 
 	_board = Board.new()

@@ -51,10 +51,10 @@ class ComboEntry:
 static func calculate(collected: Dictionary) -> ScoreBreakdown:
 	var breakdown := ScoreBreakdown.new()
 
-	var gwang_cards: Array[CardData.Card] = collected.get("gwang", [])
-	var ribbon_cards: Array[CardData.Card] = collected.get("ribbon", [])
-	var animal_cards: Array[CardData.Card] = collected.get("animal", [])
-	var pi_cards: Array[CardData.Card] = collected.get("pi", [])
+	var gwang_cards: Array = collected.get("gwang", [])
+	var ribbon_cards: Array = collected.get("ribbon", [])
+	var animal_cards: Array = collected.get("animal", [])
+	var pi_cards: Array = collected.get("pi", [])
 
 	# 기본 점수: 광 각 20점, 피 각 1점 (쌍피 2점)
 	for c in gwang_cards:
@@ -86,7 +86,7 @@ static func calculate_with_ki(collected: Dictionary, ki_cards: Array) -> ScoreBr
 
 
 ## 광 족보
-static func _check_gwang_combos(gwang: Array[CardData.Card], bd: ScoreBreakdown) -> void:
+static func _check_gwang_combos(gwang: Array, bd: ScoreBreakdown) -> void:
 	var count := gwang.size()
 	var has_rain := gwang.any(func(c: CardData.Card) -> bool: return c.month == 12)
 
@@ -106,7 +106,7 @@ static func _check_gwang_combos(gwang: Array[CardData.Card], bd: ScoreBreakdown)
 
 
 ## 띠 족보
-static func _check_ribbon_combos(ribbons: Array[CardData.Card], bd: ScoreBreakdown) -> void:
+static func _check_ribbon_combos(ribbons: Array, bd: ScoreBreakdown) -> void:
 	var red_months   := [1, 2, 3]
 	var blue_months  := [6, 9, 10]
 	var green_months := [4, 5, 7]
@@ -129,7 +129,7 @@ static func _check_ribbon_combos(ribbons: Array[CardData.Card], bd: ScoreBreakdo
 
 
 ## 열끗 족보
-static func _check_animal_combos(animals: Array[CardData.Card], bd: ScoreBreakdown) -> void:
+static func _check_animal_combos(animals: Array, bd: ScoreBreakdown) -> void:
 	# 고도리: 2월 + 4월 + 8월 열끗
 	var godori_months := [2, 4, 8]
 	if _has_all_months(animals, godori_months):
@@ -142,7 +142,7 @@ static func _check_animal_combos(animals: Array[CardData.Card], bd: ScoreBreakdo
 
 
 ## 피 족보
-static func _check_pi_combo(pi_cards: Array[CardData.Card], bd: ScoreBreakdown) -> void:
+static func _check_pi_combo(pi_cards: Array, bd: ScoreBreakdown) -> void:
 	# 피 점수 합산 (쌍피 포함)
 	var total_pi := 0
 	for c in pi_cards:
@@ -157,7 +157,7 @@ static func _check_pi_combo(pi_cards: Array[CardData.Card], bd: ScoreBreakdown) 
 
 
 ## 헬퍼: 특정 월 목록을 모두 보유하는지 확인
-static func _has_all_months(cards: Array[CardData.Card], months: Array) -> bool:
+static func _has_all_months(cards: Array, months: Array) -> bool:
 	for m in months:
 		var found := false
 		for c in cards:

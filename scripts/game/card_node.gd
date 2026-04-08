@@ -49,16 +49,18 @@ func set_selected(value: bool) -> void:
 
 
 func _build_visual() -> void:
-	# 배경
+	# 배경 — MOUSE_FILTER_IGNORE: Area2D 클릭이 통과되도록
 	_bg = ColorRect.new()
 	_bg.size = Vector2(CARD_W, CARD_H)
 	_bg.position = Vector2(-CARD_W * 0.5, -CARD_H * 0.5)
+	_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_bg)
 
-	# 유형 표시 띠 (상단 10px)
+	# 유형 표시 띠
 	_type_indicator = ColorRect.new()
 	_type_indicator.size = Vector2(CARD_W, 10)
 	_type_indicator.position = Vector2(-CARD_W * 0.5, -CARD_H * 0.5)
+	_type_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_type_indicator)
 
 	# 카드 텍스트 라벨
@@ -68,13 +70,15 @@ func _build_visual() -> void:
 	_label.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_label)
 
-	# 선택 표시 (테두리 효과 — 흰색 반투명 오버레이)
+	# 선택 표시 오버레이
 	_select_indicator = ColorRect.new()
 	_select_indicator.size = Vector2(CARD_W, CARD_H)
 	_select_indicator.position = Vector2(-CARD_W * 0.5, -CARD_H * 0.5)
 	_select_indicator.color = Color(1, 1, 1, 0.3)
+	_select_indicator.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_select_indicator.visible = false
 	add_child(_select_indicator)
 
