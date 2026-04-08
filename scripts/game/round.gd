@@ -6,6 +6,7 @@ var _round_manager: RoundManager
 var _board: Board
 var _hud: HUD
 var _status: StatusBanner
+var _combo_tracker: ComboTracker
 var _go_stop_popup: GoStopPopup
 
 var _current_score: int = 0
@@ -37,6 +38,9 @@ func _build_scene() -> void:
 
 	_status = StatusBanner.new()
 	add_child(_status)
+
+	_combo_tracker = ComboTracker.new()
+	add_child(_combo_tracker)
 
 	_go_stop_popup = GoStopPopup.new()
 	add_child(_go_stop_popup)
@@ -77,6 +81,8 @@ func _start_round() -> void:
 func _on_dealing_complete(hand: Array, floor: Array, mountain_count: int) -> void:
 	_board.setup_initial(hand, floor, mountain_count)
 	_hud.update_score(0)
+	_current_score = 0
+	_combo_tracker.update(_round_manager._collected)
 	_status.set_text("손패에서 패를 선택하세요")
 
 
@@ -90,8 +96,10 @@ func _on_hand_matched(result: Matching.MatchResult) -> void:
 	_remove_played_node()
 	_board.refresh_floor(_round_manager._floor)
 	_board.update_collected(_round_manager._collected)
+	_combo_tracker.update(_round_manager._collected)
 	if result.is_ssok:
 		_hud.show_chain("쪽!")
+	_show_match_result(result.hand_card, result.floor_cards)
 	_show_score_delta()
 	_refresh_score()
 
@@ -100,6 +108,7 @@ func _on_hand_placed(_card: CardData.Card) -> void:
 	_board.clear_highlights()
 	_remove_played_node()
 	_board.refresh_floor(_round_manager._floor)
+	_status.set_text("손패에서 패를 선택하세요")
 
 
 func _on_mountain_matched(result: Matching.MatchResult, _chain_count: int, _multiplier: float) -> void:
@@ -107,6 +116,7 @@ func _on_mountain_matched(result: Matching.MatchResult, _chain_count: int, _mult
 	_board.refresh_floor(_round_manager._floor)
 	_board.update_mountain_count(_round_manager._mountain.size())
 	_board.update_collected(_round_manager._collected)
+	_combo_tracker.update(_round_manager._collected)
 
 	var label := _round_manager._chain.get_label()
 	if not label.is_empty():
@@ -175,6 +185,31 @@ func _refresh_score() -> void:
 	var breakdown := Scoring.calculate_with_ki(_round_manager._collected, ki_cards)
 	var mult := _round_manager._go_stop.get_score_multiplier()
 	_hud.update_score(int(breakdown.total_score * mult))
+
+
+## 매칭 결과 배너 (어떤 카드를 수집했는지 1.5초 표시)
+func _show_match_result(played: CardData.Card, floor_cards: Array) -> void:
+	var type_name := _card_type_name(played)
+	var parts := ["%d월 %s" % [played.month, type_name]]
+	for fc in floor_cards:
+		parts.append("%d월 %s" % [fc.month, _card_type_name(fc)])
+	var text := " + ".join(parts) + " 수집!"
+	_status.flash(text, 1.4)
+
+
+func _card_type_name(card: CardData.Card) -> String:
+	match card.type:
+		CardData.Type.GWANG:      return "광"
+		CardData.Type.RIBBON:
+			match card.ribbon_color:
+				CardData.RibbonColor.RED:   return "홍단띠"
+				CardData.RibbonColor.BLUE:  return "청단띠"
+				CardData.RibbonColor.GREEN: return "초단띠"
+				_:                          return "띠"
+		CardData.Type.ANIMAL:     return "열끗"
+		CardData.Type.PI:         return "피"
+		CardData.Type.DOUBLE_PI:  return "쌍피"
+	return ""
 
 
 ## 점수 변화 팝업 (매칭 직후 델타 표시)

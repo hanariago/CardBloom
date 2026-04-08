@@ -24,6 +24,8 @@ var is_interactive: bool = true
 
 # 신호
 signal card_clicked(node: CardNode)
+signal card_hovered(node: CardNode)
+signal card_unhovered(node: CardNode)
 
 # 내부 노드
 var _border: ColorRect
@@ -223,11 +225,13 @@ func _on_hover_enter() -> void:
 	if not is_interactive:
 		return
 	_animate_lift(true)
+	card_hovered.emit(self)
 
 
 func _on_hover_exit() -> void:
 	if not is_selected:
 		_animate_lift(false)
+	card_unhovered.emit(self)
 
 
 func _animate_lift(up: bool) -> void:

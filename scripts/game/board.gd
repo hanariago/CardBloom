@@ -116,6 +116,8 @@ func _place_hand(hand: Array) -> void:
 		node._base_y = HAND_Y
 		node.is_interactive = true
 		node.card_clicked.connect(_on_hand_card_clicked)
+		node.card_hovered.connect(_on_hand_card_hovered)
+		node.card_unhovered.connect(_on_hand_card_unhovered)
 		add_child(node)
 		_hand_nodes.append(node)
 
@@ -218,6 +220,18 @@ func update_collected(collected: Dictionary) -> void:
 ## 산패 남은 수 업데이트
 func update_mountain_count(count: int) -> void:
 	_mountain_label.text = "산패\n%d" % count
+
+
+func _on_hand_card_hovered(node: CardNode) -> void:
+	# 선택된 카드가 없을 때만 호버 하이라이트
+	if _selected_hand_node == null and node.card_data != null:
+		highlight_matching_floor(node.card_data.month)
+
+
+func _on_hand_card_unhovered(_node: CardNode) -> void:
+	# 선택된 카드가 없으면 하이라이트 해제
+	if _selected_hand_node == null:
+		clear_highlights()
 
 
 func _on_hand_card_clicked(node: CardNode) -> void:
