@@ -25,6 +25,7 @@ config/run/main_scene="res://scenes/main.tscn"
 
 GameManager="*res://scripts/autoload/game_manager.gd"
 AudioManager="*res://scripts/autoload/audio_manager.gd"
+UITheme="*res://scripts/autoload/ui_theme.gd"
 
 [display]
 

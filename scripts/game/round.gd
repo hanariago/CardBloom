@@ -5,14 +5,14 @@ extends Node2D
 var _round_manager: RoundManager
 var _board: Board
 var _hud: HUD
+var _status: StatusBanner
 var _go_stop_popup: GoStopPopup
 
 var _current_score: int = 0
-var _last_played_node: CardNode = null  # 플레이된 손패 노드 추적 (제거용)
+var _last_played_node: CardNode = null
 
 
 func _ready() -> void:
-	# 런이 없으면 새 런 시작
 	if GameManager.current_run == null:
 		GameManager.start_new_run()
 
@@ -23,7 +23,7 @@ func _ready() -> void:
 
 func _build_scene() -> void:
 	var bg := ColorRect.new()
-	bg.color = Color(0.10, 0.10, 0.18)
+	bg.color = Color(0.08, 0.09, 0.12)
 	bg.size = Vector2(1920, 1080)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg)
@@ -34,6 +34,9 @@ func _build_scene() -> void:
 	_hud = HUD.new()
 	add_child(_hud)
 	_hud.screen_shake_target = _board
+
+	_status = StatusBanner.new()
+	add_child(_status)
 
 	_go_stop_popup = GoStopPopup.new()
 	add_child(_go_stop_popup)
@@ -74,22 +77,27 @@ func _start_round() -> void:
 func _on_dealing_complete(hand: Array, floor: Array, mountain_count: int) -> void:
 	_board.setup_initial(hand, floor, mountain_count)
 	_hud.update_score(0)
+	_status.set_text("손패에서 패를 선택하세요")
 
 
 func _on_turn_started(turn_number: int, max_turns: int) -> void:
 	_hud.update_turn(turn_number, max_turns)
+	_status.set_text("손패에서 패를 선택하세요")
 
 
 func _on_hand_matched(result: Matching.MatchResult) -> void:
+	_board.clear_highlights()
 	_remove_played_node()
 	_board.refresh_floor(_round_manager._floor)
 	_board.update_collected(_round_manager._collected)
 	if result.is_ssok:
 		_hud.show_chain("쪽!")
+	_show_score_delta()
 	_refresh_score()
 
 
 func _on_hand_placed(_card: CardData.Card) -> void:
+	_board.clear_highlights()
 	_remove_played_node()
 	_board.refresh_floor(_round_manager._floor)
 
@@ -103,6 +111,7 @@ func _on_mountain_matched(result: Matching.MatchResult, _chain_count: int, _mult
 	var label := _round_manager._chain.get_label()
 	if not label.is_empty():
 		_hud.show_chain(label)
+	_show_score_delta()
 	_refresh_score()
 
 
@@ -118,6 +127,7 @@ func _on_scoring_complete(_breakdown: Scoring.ScoreBreakdown, _multiplier: float
 
 func _on_goal_reached(current_score: int, target_score: int) -> void:
 	_current_score = current_score
+	_status.set_text("목표 달성! 고 또는 스톱을 선택하세요")
 	_go_stop_popup.show_popup(current_score, target_score, _round_manager._go_stop)
 
 
@@ -125,28 +135,30 @@ func _on_go_stop_resolved(decision: GoStop.Decision, _go_count: int, multiplier:
 	_go_stop_popup.hide_popup()
 	if decision == GoStop.Decision.GO:
 		_hud.show_chain("고! (×%s)" % _mult_str(multiplier))
+		_status.set_text("손패에서 패를 선택하세요")
 
 
 func _on_go_failed(_penalty: Dictionary) -> void:
 	_hud.show_chain("고 실패...")
+	_status.flash("고 실패! 패널티가 적용됩니다", 2.0)
 	_hud.update_score(0)
 
 
 func _on_round_complete(final_score: int, coins_earned: int) -> void:
 	_hud.update_coins(GameManager.current_run.total_coins)
-	# 런이 끝나지 않은 경우 상점으로 전환
 	if GameManager.current_run.round_number < 13:
 		_go_to_shop(final_score)
-	# TODO: 13판 완료 시 런 종료 씬으로 전환
 
 
-# ── Board 신호 핸들러 ────────────────────────────────
+# ── Board 신호 핸들러 ────────────────────────────────────
 
 func _on_hand_card_selected(card_node: CardNode) -> void:
 	if _round_manager.state != RoundManager.State.PLAYER_TURN_A:
 		_board.clear_selection()
 		return
 	_last_played_node = card_node
+	# 해당 월 바닥 카드 하이라이트
+	_board.highlight_matching_floor(card_node.card_data.month)
 	_round_manager.select_hand_card(card_node.card_data)
 
 
@@ -165,6 +177,19 @@ func _refresh_score() -> void:
 	_hud.update_score(int(breakdown.total_score * mult))
 
 
+## 점수 변화 팝업 (매칭 직후 델타 표시)
+func _show_score_delta() -> void:
+	var ki_cards: Array = GameManager.current_run.ki_cards
+	var breakdown := Scoring.calculate_with_ki(_round_manager._collected, ki_cards)
+	var mult := _round_manager._go_stop.get_score_multiplier()
+	var new_score := int(breakdown.total_score * mult)
+	var delta := new_score - _current_score
+	if delta > 0:
+		# 화면 중앙 바닥 영역 근처에 스폰
+		ScorePopup.spawn(_board, Vector2(790, Board.FLOOR_Y - 60), delta)
+	_current_score = new_score
+
+
 func _go_to_shop(round_score: int) -> void:
 	var shop := Shop.new()
 	shop.round_score = round_score
@@ -173,7 +198,6 @@ func _go_to_shop(round_score: int) -> void:
 
 
 func _on_shop_closed() -> void:
-	# 다음 판 시작
 	GameManager.current_run.round_number += 1
 	_hud.update_ki_slots(GameManager.current_run.ki_cards)
 	_board.clear_selection()
