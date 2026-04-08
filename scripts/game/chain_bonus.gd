@@ -44,7 +44,7 @@ func get_count() -> int:
 func get_label() -> String:
 	if _consecutive_count < 2:
 		return ""
-	var key := min(_consecutive_count, 4)
+	var key: int = mini(_consecutive_count, 4)
 	return CHAIN_LABELS.get(key, "기적!!!")
 
 

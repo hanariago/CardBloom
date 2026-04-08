@@ -172,7 +172,7 @@ func _make_card_button(ki: KiCardData, _index: int) -> Control:
 	desc_lbl.text = ki.description
 	desc_lbl.position = Vector2(10, 152)
 	desc_lbl.size = Vector2(240, 60)
-	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_ARBITRARY
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	desc_lbl.add_theme_font_size_override("font_size", 15)
 	desc_lbl.modulate = Color(1, 1, 1, 0.8)
 	card_bg.add_child(desc_lbl)

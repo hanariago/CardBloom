@@ -260,9 +260,9 @@ func _score_and_end() -> void:
 
 	scoring_complete.emit(breakdown, multiplier, final_score)
 
-	var target := GameManager.get_round_target_score()
-	var excess := max(0, final_score - target)
-	var coins := GameManager.convert_score_to_coins(excess)
+	var target: int = GameManager.get_round_target_score()
+	var excess: int = maxi(0, final_score - target)
+	var coins: int = GameManager.convert_score_to_coins(excess)
 	GameManager.add_coins(coins)
 
 	state = State.COMPLETE

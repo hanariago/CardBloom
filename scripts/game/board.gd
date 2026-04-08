@@ -108,15 +108,15 @@ func _place_floor(floor_cards: Array) -> void:
 		node.queue_free()
 	_floor_nodes.clear()
 
-	var count := floor_cards.size()
-	var cols := min(count, 8)
-	var rows := ceili(float(count) / cols)
-	var total_w := cols * CARD_W + (cols - 1) * CARD_GAP
-	var start_x := 800.0 - total_w * 0.5 + CARD_W * 0.5
+	var count: int = floor_cards.size()
+	var cols: int = mini(count, 8)
+	var rows: int = ceili(float(count) / float(cols))
+	var total_w: float = cols * CARD_W + (cols - 1) * CARD_GAP
+	var start_x: float = 800.0 - total_w * 0.5 + CARD_W * 0.5
 
 	for i in count:
-		var col := i % cols
-		var row := i / cols
+		var col: int = i % cols
+		var row: int = i / cols
 		var node := _make_card_node(floor_cards[i])
 		node.position = Vector2(
 			start_x + col * (CARD_W + CARD_GAP),

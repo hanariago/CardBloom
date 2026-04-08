@@ -29,13 +29,15 @@ var _hover_tween: Tween
 
 
 func _ready() -> void:
-	_build_visual()
+	# _build_visual은 setup()에서 먼저 호출됨.
+	# _setup_input은 Area2D가 씬 트리에 있어야 하므로 _ready에서 실행.
 	_setup_input()
 
 
-## 카드 데이터 설정 (생성 후 반드시 호출)
+## 카드 데이터 설정 (add_child 전에 호출 가능)
 func setup(data: CardData.Card) -> void:
 	card_data = data
+	_build_visual()
 	_update_visual()
 
 
@@ -63,7 +65,7 @@ func _build_visual() -> void:
 	_label = Label.new()
 	_label.size = Vector2(CARD_W - 8, CARD_H - 16)
 	_label.position = Vector2(-CARD_W * 0.5 + 4, -CARD_H * 0.5 + 14)
-	_label.autowrap_mode = TextServer.AUTOWRAP_WORD_ARBITRARY
+	_label.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	add_child(_label)
