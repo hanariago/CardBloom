@@ -16,6 +16,8 @@ const COLLECTED_X := 1680.0  # 수집 영역 X 시작
 const COLLECTED_Y := 460.0
 
 signal hand_card_clicked(card_node: CardNode)
+signal hand_card_preview(card: CardData.Card, match_count: int)
+signal hand_card_preview_ended()
 
 # 카드 노드 그룹
 var _hand_nodes: Array[CardNode] = []
@@ -209,12 +211,22 @@ func clear_highlights() -> void:
 		node.set_highlight(false)
 
 
-## 수집 패 카운터 업데이트
+## 수집 패 카운터 업데이트 (변경된 항목 반짝임)
 func update_collected(collected: Dictionary) -> void:
 	var label_map := {"gwang": "光 광", "ribbon": "帶 띠", "animal": "動 열끗", "pi": "皮 피"}
 	for key in _collected_labels:
 		var arr: Array = collected.get(key, [])
-		_collected_labels[key].text = "%s: %d" % [label_map[key], arr.size()]
+		var lbl: Label = _collected_labels[key]
+		var new_text := "%s: %d" % [label_map[key], arr.size()]
+		if new_text != lbl.text and arr.size() > 0:
+			_flash_label(lbl)
+		lbl.text = new_text
+
+
+func _flash_label(lbl: Label) -> void:
+	var tween := create_tween()
+	tween.tween_property(lbl, "modulate", Color(2.0, 1.8, 0.4, 1.0), 0.0)
+	tween.tween_property(lbl, "modulate", Color.WHITE, 0.5)
 
 
 ## 산패 남은 수 업데이트
@@ -223,15 +235,24 @@ func update_mountain_count(count: int) -> void:
 
 
 func _on_hand_card_hovered(node: CardNode) -> void:
-	# 선택된 카드가 없을 때만 호버 하이라이트
 	if _selected_hand_node == null and node.card_data != null:
 		highlight_matching_floor(node.card_data.month)
+		var count := _count_floor_matches(node.card_data.month)
+		hand_card_preview.emit(node.card_data, count)
 
 
 func _on_hand_card_unhovered(_node: CardNode) -> void:
-	# 선택된 카드가 없으면 하이라이트 해제
 	if _selected_hand_node == null:
 		clear_highlights()
+		hand_card_preview_ended.emit()
+
+
+func _count_floor_matches(month: int) -> int:
+	var count := 0
+	for n in _floor_nodes:
+		if n.card_data != null and n.card_data.month == month:
+			count += 1
+	return count
 
 
 func _on_hand_card_clicked(node: CardNode) -> void:

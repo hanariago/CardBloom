@@ -65,6 +65,13 @@ func set_highlight(on: bool) -> void:
 	_highlight.visible = on
 
 
+## 수집/매칭 시 짧은 글로우 플래시
+func flash_glow() -> void:
+	var tween := create_tween()
+	tween.tween_property(self, "modulate", Color(2.0, 1.9, 0.5, 1.0), 0.0)
+	tween.tween_property(self, "modulate", Color.WHITE, 0.35)
+
+
 ## 카드 유형에 맞는 대표 색상 반환
 func _type_color() -> Color:
 	if card_data == null:
