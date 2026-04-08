@@ -36,11 +36,12 @@ func start_new_run() -> void:
 
 
 ## 현재 판 목표 점수 계산
-## 판 번호가 올라갈수록 목표 점수 상승 (플레이테스트 후 곡선 조정 예정)
+## 1판: 60점 (삼광 75 or 2광+족보 조합으로 달성 가능)
+## 매 판 ×1.4 상승
 func get_round_target_score() -> int:
 	if current_run == null:
-		return 20
-	var base := 20
+		return 60
+	var base := 60
 	var multiplier := 1.4
 	return int(base * pow(multiplier, current_run.round_number - 1))
 

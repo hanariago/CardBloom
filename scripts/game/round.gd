@@ -162,8 +162,23 @@ func _on_scoring_complete(_breakdown: Scoring.ScoreBreakdown, _multiplier: float
 
 func _on_goal_reached(current_score: int, target_score: int) -> void:
 	_current_score = current_score
-	_status.set_text("목표 달성! 고 또는 스톱을 선택하세요")
+	# 점수 내역 한 줄 요약
+	var ki_cards: Array = GameManager.current_run.ki_cards
+	var breakdown := Scoring.calculate_with_ki(_round_manager._collected, ki_cards)
+	var why := _score_breakdown_short(breakdown)
+	_status.set_text("목표 %d점 달성! (%s)  →  고 또는 스톱 선택" % [target_score, why])
 	_go_stop_popup.show_popup(current_score, target_score, _round_manager._go_stop)
+
+
+## 점수 내역 짧은 한 줄 요약 ("광20 + 삼광15 + 홍단10 = 45점")
+func _score_breakdown_short(bd: Scoring.ScoreBreakdown) -> String:
+	var parts: Array[String] = []
+	if bd.base_score > 0:
+		parts.append("기본%d" % bd.base_score)
+	for combo in bd.combos:
+		if combo.points > 0:
+			parts.append("%s+%d" % [combo.name, combo.points])
+	return " + ".join(parts) + " = %d점" % bd.total_score
 
 
 func _on_go_stop_resolved(decision: GoStop.Decision, _go_count: int, multiplier: float) -> void:
