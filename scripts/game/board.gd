@@ -2,29 +2,36 @@ class_name Board
 extends Node2D
 
 ## 게임 보드 — 손패 / 바닥 / 산패 / 수집 영역 배치 및 카드 노드 관리
+##
+## 레이아웃 원칙 (리서치 기반):
+##   - 산패는 손패 바로 옆 하단 → "내 패 낸 후 여기서 나온다" 시각적 흐름
+##   - 바닥은 중앙 상단 → 항상 시야 중심
+##   - 수집 현황은 우상단 → HUD 아래 항상 노출
 
-const CARD_W := CardNode.CARD_W
-const CARD_H := CardNode.CARD_H
+const CARD_W := CardNode.CARD_W   # 100
+const CARD_H := CardNode.CARD_H   # 150
 const CARD_GAP := 12.0
 
-# 레이아웃 기준점 (1920×1080 기준)
-const HAND_Y      := 930.0   # 손패 중심 Y
-const FLOOR_Y     := 370.0   # 바닥 패 중심 Y
-const MOUNTAIN_X  := 1780.0  # 산패 더미 X
-const MOUNTAIN_Y  := 280.0
-const COLLECTED_X := 1680.0  # 수집 영역 X 시작
-const COLLECTED_Y := 460.0
+# ── 레이아웃 기준점 (1920×1080) ─────────────────────────
+const HAND_Y      := 870.0    # 손패 중심 Y  (하단에서 여유)
+const FLOOR_Y     := 400.0    # 바닥 패 중심 Y
+const FLOOR_CX    := 855.0    # 바닥 패 수평 중심 (좌측 ComboTracker 감안)
+
+const MOUNTAIN_X  := 1810.0   # 산패 — 우하단, 손패 옆
+const MOUNTAIN_Y  := 910.0
+
+const COLLECTED_X := 1628.0   # 수집 현황 — 우상단
+const COLLECTED_Y := 145.0    # HUD + StatusBanner 아래
 
 signal hand_card_clicked(card_node: CardNode)
 signal hand_card_preview(card: CardData.Card, match_count: int)
 signal hand_card_preview_ended()
 
-# 카드 노드 그룹
 var _hand_nodes: Array[CardNode] = []
 var _floor_nodes: Array[CardNode] = []
 var _mountain_label: Label
+var _mountain_count_label: Label
 var _collected_labels: Dictionary
-
 var _selected_hand_node: CardNode = null
 
 
@@ -33,81 +40,121 @@ func _ready() -> void:
 	_build_static_ui()
 
 
-func _build_zone_panels() -> void:
-	# 손패 영역 패널
-	var hand_panel := ColorRect.new()
-	hand_panel.size = Vector2(1400, CARD_H + 40)
-	hand_panel.position = Vector2(260, HAND_Y - CARD_H * 0.5 - 20)
-	hand_panel.color = Color(0.06, 0.06, 0.14, 0.70)
-	hand_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(hand_panel)
+# ── 배경 패널 ────────────────────────────────────────────
 
+func _build_zone_panels() -> void:
 	# 바닥 패 영역 패널
+	var floor_w := 1280.0
 	var floor_panel := ColorRect.new()
-	floor_panel.size = Vector2(1200, CARD_H * 2 + CARD_GAP + 40)
-	floor_panel.position = Vector2(190, FLOOR_Y - CARD_H - CARD_GAP * 0.5 - 20)
-	floor_panel.color = Color(0.08, 0.10, 0.06, 0.60)
+	floor_panel.size = Vector2(floor_w, CARD_H * 2 + CARD_GAP + 44)
+	floor_panel.position = Vector2(
+		FLOOR_CX - floor_w * 0.5,
+		FLOOR_Y - CARD_H - CARD_GAP * 0.5 - 22
+	)
+	floor_panel.color = Color(0.07, 0.09, 0.06, 0.62)
 	floor_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(floor_panel)
 
-	# 영역 라벨
-	_add_zone_label("바닥", Vector2(200, FLOOR_Y - CARD_H - CARD_GAP * 0.5 - 18))
-	_add_zone_label("손패", Vector2(270, HAND_Y - CARD_H * 0.5 - 18))
+	# 손패 영역 패널 (좌측 ComboTracker 공간 제외)
+	var hand_panel := ColorRect.new()
+	hand_panel.size = Vector2(1400, CARD_H + 36)
+	hand_panel.position = Vector2(310, HAND_Y - CARD_H * 0.5 - 18)
+	hand_panel.color = Color(0.06, 0.06, 0.14, 0.72)
+	hand_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(hand_panel)
+
+	# 산패 영역 패널 (우하단)
+	var mt_panel := ColorRect.new()
+	mt_panel.size = Vector2(168, 210)
+	mt_panel.position = Vector2(MOUNTAIN_X - 84, MOUNTAIN_Y - 140)
+	mt_panel.color = Color(0.10, 0.10, 0.22, 0.88)
+	mt_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(mt_panel)
+
+	# 산패 패널 테두리
+	var mt_border := ColorRect.new()
+	mt_border.size = Vector2(170, 212)
+	mt_border.position = Vector2(MOUNTAIN_X - 85, MOUNTAIN_Y - 141)
+	mt_border.color = Color(0.30, 0.28, 0.45, 0.6)
+	mt_border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(mt_border)
+	move_child(mt_border, get_child_count() - 3)
+
+	# 구역 라벨
+	_add_zone_label("바닥", Vector2(FLOOR_CX - floor_w * 0.5 + 10, FLOOR_Y - CARD_H - CARD_GAP * 0.5 - 20))
+	_add_zone_label("손패", Vector2(320, HAND_Y - CARD_H * 0.5 - 18))
 
 
 func _add_zone_label(text: String, pos: Vector2) -> void:
 	var lbl := Label.new()
 	lbl.text = text
 	lbl.position = pos
-	lbl.modulate = Color(1, 1, 1, 0.35)
+	lbl.modulate = Color(1, 1, 1, 0.30)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	UITheme.apply_pretendard(lbl, 15)
 	add_child(lbl)
 
 
-func _build_static_ui() -> void:
-	# 산패 더미 배경
-	var mountain_bg := ColorRect.new()
-	mountain_bg.size = Vector2(CARD_W + 6, CARD_H + 6)
-	mountain_bg.position = Vector2(MOUNTAIN_X - (CARD_W + 6) * 0.5, MOUNTAIN_Y - (CARD_H + 6) * 0.5)
-	mountain_bg.color = Color(0.15, 0.15, 0.25)
-	mountain_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(mountain_bg)
+# ── 정적 UI (산패 / 수집 현황) ───────────────────────────
 
+func _build_static_ui() -> void:
+	# 산패 카드 더미 그래픽 (3장 겹쳐서 깊이감)
+	for i in 3:
+		var shadow := ColorRect.new()
+		shadow.size = Vector2(CARD_W - 4, CARD_H - 4)
+		shadow.position = Vector2(MOUNTAIN_X - (CARD_W - 4) * 0.5 + (2 - i) * 3,
+								  MOUNTAIN_Y - CARD_H * 0.5 - 30 + (2 - i) * 3)
+		shadow.color = Color(0.18, 0.18, 0.32)
+		shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(shadow)
+
+	# 산패 레이블
 	_mountain_label = Label.new()
-	_mountain_label.position = Vector2(MOUNTAIN_X - 46, MOUNTAIN_Y - 28)
-	_mountain_label.size = Vector2(92, 56)
+	_mountain_label.text = "산패"
+	_mountain_label.position = Vector2(MOUNTAIN_X - 50, MOUNTAIN_Y - CARD_H * 0.5 - 55)
+	_mountain_label.size = Vector2(100, 28)
 	_mountain_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_mountain_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_mountain_label.text = "산패\n30"
-	_mountain_label.add_theme_color_override("font_color", Color(0.85, 0.85, 1.0))
+	_mountain_label.add_theme_color_override("font_color", Color(0.75, 0.75, 0.95))
 	_mountain_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	UITheme.apply_pretendard(_mountain_label, 22)
+	UITheme.apply_pretendard(_mountain_label, 17)
 	add_child(_mountain_label)
 
-	# 수집 영역 라벨 — 크고 명확하게
-	var types  := ["gwang", "ribbon", "animal", "pi"]
-	var label_texts := ["光 광", "帶 띠", "動 열끗", "皮 피"]
+	# 산패 수 — 크고 명확하게
+	_mountain_count_label = Label.new()
+	_mountain_count_label.text = "30"
+	_mountain_count_label.position = Vector2(MOUNTAIN_X - 50, MOUNTAIN_Y - CARD_H * 0.5 - 24)
+	_mountain_count_label.size = Vector2(100, 50)
+	_mountain_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_mountain_count_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_mountain_count_label.add_theme_color_override("font_color", Color(0.95, 0.90, 0.65))
+	_mountain_count_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.apply_pretendard(_mountain_count_label, 36)
+	add_child(_mountain_count_label)
+
+	# 수집 현황 레이블 — 우상단, 항상 노출
+	var types        := ["gwang", "ribbon", "animal", "pi"]
+	var label_texts  := ["光 광", "帶 띠", "動 열끗", "皮 피"]
 	var label_colors := [
-		Color(0.97, 0.84, 0.20),   # 광 — 금색
-		Color(0.92, 0.35, 0.35),   # 띠 — 붉은
-		Color(0.35, 0.75, 0.98),   # 열끗 — 청색
-		Color(0.72, 0.72, 0.75),   # 피 — 회색
+		Color(0.97, 0.84, 0.20),
+		Color(0.92, 0.35, 0.35),
+		Color(0.35, 0.75, 0.98),
+		Color(0.72, 0.72, 0.75),
 	]
 	_collected_labels = {}
 	for i in types.size():
 		var lbl := Label.new()
-		lbl.position = Vector2(COLLECTED_X - 10, COLLECTED_Y + i * 48)
-		lbl.size = Vector2(160, 44)
+		lbl.position = Vector2(COLLECTED_X, COLLECTED_Y + i * 54)
+		lbl.size = Vector2(270, 48)
 		lbl.add_theme_color_override("font_color", label_colors[i])
 		lbl.text = "%s: 0" % label_texts[i]
 		lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		UITheme.apply_pretendard(lbl, 24)
+		UITheme.apply_pretendard(lbl, 26)
 		add_child(lbl)
 		_collected_labels[types[i]] = lbl
 
 
-## 딜링 완료 후 초기 배치
+# ── 카드 배치 ────────────────────────────────────────────
+
 func setup_initial(hand: Array, floor: Array, mountain_count: int) -> void:
 	_clear_cards()
 	_place_hand(hand)
@@ -115,11 +162,12 @@ func setup_initial(hand: Array, floor: Array, mountain_count: int) -> void:
 	update_mountain_count(mountain_count)
 
 
-## 손패 배치
 func _place_hand(hand: Array) -> void:
 	var count := hand.size()
+	# 손패는 ComboTracker(x=22~312) 오른쪽부터 시작, 화면 중앙보다 약간 좌
 	var total_w := count * CARD_W + (count - 1) * CARD_GAP
-	var start_x := 960.0 - total_w * 0.5 + CARD_W * 0.5
+	var center_x := 870.0   # 산패 공간 고려해 약간 왼쪽
+	var start_x := center_x - total_w * 0.5 + CARD_W * 0.5
 	for i in count:
 		var node := _make_card_node(hand[i])
 		node.position = Vector2(start_x + i * (CARD_W + CARD_GAP), HAND_Y)
@@ -132,7 +180,6 @@ func _place_hand(hand: Array) -> void:
 		_hand_nodes.append(node)
 
 
-## 바닥 패 배치 (최대 2행)
 func _place_floor(floor_cards: Array) -> void:
 	for node in _floor_nodes:
 		node.queue_free()
@@ -144,7 +191,7 @@ func _place_floor(floor_cards: Array) -> void:
 	var cols: int = mini(count, 8)
 	var rows: int = ceili(float(count) / float(cols))
 	var total_w: float = cols * CARD_W + (cols - 1) * CARD_GAP
-	var start_x: float = 790.0 - total_w * 0.5 + CARD_W * 0.5
+	var start_x: float = FLOOR_CX - total_w * 0.5 + CARD_W * 0.5
 
 	for i in count:
 		var col: int = i % cols
@@ -159,18 +206,27 @@ func _place_floor(floor_cards: Array) -> void:
 		_floor_nodes.append(node)
 
 
-## 산패 뒤집기 애니메이션
+# ── 산패 애니메이션 (하단 → 바닥 대각선 이동) ────────────
+
 func animate_mountain_flip(card: CardData.Card, matched: bool) -> void:
 	var node := _make_card_node(card)
-	node.position = Vector2(MOUNTAIN_X, MOUNTAIN_Y)
+	node.position = Vector2(MOUNTAIN_X, MOUNTAIN_Y - CARD_H * 0.5)
 	node.is_interactive = false
 	add_child(node)
 
-	var target_y := FLOOR_Y if not matched else FLOOR_Y - 90.0
+	# 목적지: 바닥 중앙 or 매칭 시 살짝 위
+	var target_x := FLOOR_CX
+	var target_y := FLOOR_Y if not matched else FLOOR_Y - 80.0
+
+	# 대각선 호 이동 (우하 → 좌상) — 흐름이 눈에 보임
 	var tween := create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	tween.tween_property(node, "position:y", target_y, 0.35)
+	tween.tween_property(node, "position", Vector2(target_x, target_y), 0.45)
 
 	if matched:
+		tween.tween_callback(func() -> void:
+			node.flash_glow()
+		)
+		tween.tween_interval(0.25)
 		tween.tween_callback(func() -> void:
 			node.modulate.a = 0.0
 			node.queue_free()
@@ -181,25 +237,25 @@ func animate_mountain_flip(card: CardData.Card, matched: bool) -> void:
 		)
 
 
-## 바닥 패 갱신
+# ── 갱신 메서드 ──────────────────────────────────────────
+
 func refresh_floor(floor_cards: Array) -> void:
 	_place_floor(floor_cards)
 
 
-## 손패에서 카드 제거
 func remove_from_hand(card_node: CardNode) -> void:
 	_hand_nodes.erase(card_node)
 	card_node.queue_free()
 	_reposition_hand()
 
 
-## 손패 재정렬
 func _reposition_hand() -> void:
 	var count := _hand_nodes.size()
 	if count == 0:
 		return
 	var total_w := count * CARD_W + (count - 1) * CARD_GAP
-	var start_x := 960.0 - total_w * 0.5 + CARD_W * 0.5
+	var center_x := 870.0
+	var start_x := center_x - total_w * 0.5 + CARD_W * 0.5
 	for i in count:
 		var tween := create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 		tween.tween_property(_hand_nodes[i], "position:x",
@@ -207,19 +263,16 @@ func _reposition_hand() -> void:
 		_hand_nodes[i]._base_y = HAND_Y
 
 
-## 매칭 가능한 바닥 카드 하이라이트
 func highlight_matching_floor(month: int) -> void:
 	for node in _floor_nodes:
 		node.set_highlight(node.card_data != null and node.card_data.month == month)
 
 
-## 하이라이트 전체 해제
 func clear_highlights() -> void:
 	for node in _floor_nodes:
 		node.set_highlight(false)
 
 
-## 수집 패 카운터 업데이트 (변경된 항목 반짝임)
 func update_collected(collected: Dictionary) -> void:
 	var label_map := {"gwang": "光 광", "ribbon": "帶 띠", "animal": "動 열끗", "pi": "皮 피"}
 	for key in _collected_labels:
@@ -237,10 +290,15 @@ func _flash_label(lbl: Label) -> void:
 	tween.tween_property(lbl, "modulate", Color.WHITE, 0.5)
 
 
-## 산패 남은 수 업데이트
 func update_mountain_count(count: int) -> void:
-	_mountain_label.text = "산패\n%d" % count
+	_mountain_count_label.text = str(count)
+	# 카운트 바운스 애니메이션
+	var tween := create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tween.tween_property(_mountain_count_label, "scale", Vector2(1.3, 1.3), 0.0)
+	tween.tween_property(_mountain_count_label, "scale", Vector2.ONE, 0.3)
 
+
+# ── 입력 핸들러 ──────────────────────────────────────────
 
 func _on_hand_card_hovered(node: CardNode) -> void:
 	if _selected_hand_node == null and node.card_data != null:
@@ -278,7 +336,6 @@ func _on_hand_card_clicked(node: CardNode) -> void:
 	hand_card_clicked.emit(node)
 
 
-## 선택 초기화
 func clear_selection() -> void:
 	if _selected_hand_node != null:
 		_selected_hand_node.set_selected(false)

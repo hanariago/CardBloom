@@ -343,7 +343,7 @@ func _show_score_delta() -> void:
 	var new_score := int(breakdown.total_score * mult)
 	var delta := new_score - _current_score
 	if delta > 0:
-		ScorePopup.spawn(_board, Vector2(790, Board.FLOOR_Y - 60), delta)
+		ScorePopup.spawn(_board, Vector2(Board.FLOOR_CX, Board.FLOOR_Y - 80), delta)
 	_current_score = new_score
 
 
