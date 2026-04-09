@@ -61,6 +61,7 @@ func _connect_signals() -> void:
 	_round_manager.hand_placed.connect(_on_hand_placed)
 	_round_manager.mountain_matched.connect(_on_mountain_matched)
 	_round_manager.mountain_placed.connect(_on_mountain_placed)
+	_round_manager.mountain_flip_pending.connect(_on_mountain_flip_pending)
 	_round_manager.scoring_complete.connect(_on_scoring_complete)
 	_round_manager.goal_reached.connect(_on_goal_reached)
 	_round_manager.go_stop_resolved.connect(_on_go_stop_resolved)
@@ -143,16 +144,29 @@ func _on_mountain_matched(result: Matching.MatchResult, _chain_count: int, _mult
 	_board.update_collected(_round_manager._collected)
 	_combo_tracker.update(_round_manager._collected)
 
-	var label := _round_manager._chain.get_label()
-	if not label.is_empty():
-		_hud.show_chain(label)
+	var chain_label := _round_manager._chain.get_label()
+	if not chain_label.is_empty():
+		_hud.show_chain(chain_label)
+
+	# 산패 매칭 결과 텍스트
+	var mc := result.hand_card
+	var parts: Array[String] = ["산패 %d월 %s" % [mc.month, _card_type_name(mc)]]
+	for fc in result.floor_cards:
+		parts.append("%d월 %s" % [fc.month, _card_type_name(fc)])
+	_status.flash(" + ".join(parts) + " 수집!", 1.0)
+
 	_show_score_delta()
 	_refresh_score()
+
+
+func _on_mountain_flip_pending() -> void:
+	_status.set_text("▼  산패 뒤집는 중...")
 
 
 func _on_mountain_placed(card: CardData.Card) -> void:
 	_board.animate_mountain_flip(card, false)
 	_board.update_mountain_count(_round_manager._mountain.size())
+	_status.flash("%d월 %s → 바닥에 추가됨" % [card.month, _card_type_name(card)], 1.0)
 
 
 func _on_scoring_complete(_breakdown: Scoring.ScoreBreakdown, _multiplier: float, final_score: int) -> void:

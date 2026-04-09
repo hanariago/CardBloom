@@ -174,12 +174,18 @@ func _start_turn() -> void:
 	turn_started.emit(_turn_number, _max_turns)
 
 
+## 산패 뒤집기 직전 신호 — UI에서 "산패 뒤집는 중..." 표시용
+signal mountain_flip_pending()
+
 func _proceed_to_turn_b() -> void:
 	if _mountain.is_empty():
 		_end_turn()
 		return
 
 	state = State.PLAYER_TURN_B
+	mountain_flip_pending.emit()
+	# 0.55초 대기 → 손패 결과를 읽을 시간 + 산패 페이즈 구분
+	await get_tree().create_timer(0.55).timeout
 	_flip_mountain()
 
 
