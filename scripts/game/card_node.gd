@@ -236,6 +236,8 @@ func _on_hover_enter() -> void:
 
 
 func _on_hover_exit() -> void:
+	if not is_interactive:
+		return   # 날아가는 중엔 hover 해제 무시 (tween 충돌 방지)
 	if not is_selected:
 		_animate_lift(false)
 	card_unhovered.emit(self)

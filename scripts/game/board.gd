@@ -3,25 +3,32 @@ extends Node2D
 
 ## 게임 보드 — 손패 / 바닥 / 산패 / 수집 영역 배치 및 카드 노드 관리
 ##
-## 레이아웃 원칙 (리서치 기반):
-##   - 산패는 손패 바로 옆 하단 → "내 패 낸 후 여기서 나온다" 시각적 흐름
-##   - 바닥은 중앙 상단 → 항상 시야 중심
-##   - 수집 현황은 우상단 → HUD 아래 항상 노출
+## 레이아웃 (1920×1080):
+##   HUD (y=0-60) + StatusBanner (y=62-116)
+##   ComboTracker (x=0-312, y=118+)
+##   Floor  (x=335-1615, y=285-815)   ← 중앙 무대
+##   Right panel (x=1640-1920):
+##     Mountain deck  (y=132-342)
+##     Collected info (y=370-600)
+##   Hand (y=830-1080)                ← 파란 구분선으로 명확히 분리
 
 const CARD_W := CardNode.CARD_W   # 100
 const CARD_H := CardNode.CARD_H   # 150
 const CARD_GAP := 12.0
 
-# ── 레이아웃 기준점 (1920×1080) ─────────────────────────
-const HAND_Y      := 870.0    # 손패 중심 Y  (하단에서 여유)
-const FLOOR_Y     := 400.0    # 바닥 패 중심 Y
-const FLOOR_CX    := 855.0    # 바닥 패 수평 중심 (좌측 ComboTracker 감안)
+## 바닥 카드는 손패보다 작게 — 구역 구분 + 상대적 원근감
+const FLOOR_CARD_SCALE := 0.80
 
-const MOUNTAIN_X  := 1810.0   # 산패 — 우하단, 손패 옆
-const MOUNTAIN_Y  := 910.0
+# ── 레이아웃 기준점 ─────────────────────────────────────
+const HAND_Y      := 940.0
+const FLOOR_Y     := 540.0
+const FLOOR_CX    := 975.0
 
-const COLLECTED_X := 1628.0   # 수집 현황 — 우상단
-const COLLECTED_Y := 145.0    # HUD + StatusBanner 아래
+const MOUNTAIN_X  := 1780.0
+const MOUNTAIN_Y  := 240.0
+
+const COLLECTED_X := 1640.0
+const COLLECTED_Y := 370.0
 
 signal hand_card_clicked(card_node: CardNode)
 signal hand_card_preview(card: CardData.Card, match_count: int)
@@ -43,46 +50,61 @@ func _ready() -> void:
 # ── 배경 패널 ────────────────────────────────────────────
 
 func _build_zone_panels() -> void:
-	# 바닥 패 영역 패널
-	var floor_w := 1280.0
+	var floor_w     := 1280.0
+	var floor_top_y := 285.0
+	var floor_h     := 530.0   # 3행 여유
+
+	# 바닥 테두리
+	var floor_border := ColorRect.new()
+	floor_border.size = Vector2(floor_w + 4, floor_h + 4)
+	floor_border.position = Vector2(FLOOR_CX - floor_w * 0.5 - 2, floor_top_y - 2)
+	floor_border.color = Color(0.20, 0.45, 0.25, 0.45)
+	floor_border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(floor_border)
+
+	# 바닥 패널
 	var floor_panel := ColorRect.new()
-	floor_panel.size = Vector2(floor_w, CARD_H * 2 + CARD_GAP + 44)
-	floor_panel.position = Vector2(
-		FLOOR_CX - floor_w * 0.5,
-		FLOOR_Y - CARD_H - CARD_GAP * 0.5 - 22
-	)
-	floor_panel.color = Color(0.07, 0.09, 0.06, 0.62)
+	floor_panel.size = Vector2(floor_w, floor_h)
+	floor_panel.position = Vector2(FLOOR_CX - floor_w * 0.5, floor_top_y)
+	floor_panel.color = Color(0.05, 0.12, 0.07, 0.65)
 	floor_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(floor_panel)
 
-	# 손패 영역 패널 (좌측 ComboTracker 공간 제외)
+	# 손패 구분선
+	var sep := ColorRect.new()
+	sep.size = Vector2(1920, 4)
+	sep.position = Vector2(0, 828)
+	sep.color = Color(0.32, 0.38, 0.80, 0.55)
+	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(sep)
+
+	# 손패 배경 (남색 — 플레이어 영역)
 	var hand_panel := ColorRect.new()
-	hand_panel.size = Vector2(1400, CARD_H + 36)
-	hand_panel.position = Vector2(310, HAND_Y - CARD_H * 0.5 - 18)
-	hand_panel.color = Color(0.06, 0.06, 0.14, 0.72)
+	hand_panel.size = Vector2(1920, 252)
+	hand_panel.position = Vector2(0, 832)
+	hand_panel.color = Color(0.04, 0.05, 0.18, 0.88)
 	hand_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(hand_panel)
 
-	# 산패 영역 패널 (우하단)
+	# 산패 패널 테두리
+	var mt_border := ColorRect.new()
+	mt_border.size = Vector2(204, 216)
+	mt_border.position = Vector2(MOUNTAIN_X - 102, MOUNTAIN_Y - 110)
+	mt_border.color = Color(0.32, 0.28, 0.58, 0.65)
+	mt_border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(mt_border)
+
+	# 산패 패널
 	var mt_panel := ColorRect.new()
-	mt_panel.size = Vector2(168, 210)
-	mt_panel.position = Vector2(MOUNTAIN_X - 84, MOUNTAIN_Y - 140)
-	mt_panel.color = Color(0.10, 0.10, 0.22, 0.88)
+	mt_panel.size = Vector2(200, 212)
+	mt_panel.position = Vector2(MOUNTAIN_X - 100, MOUNTAIN_Y - 108)
+	mt_panel.color = Color(0.08, 0.08, 0.22, 0.92)
 	mt_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(mt_panel)
 
-	# 산패 패널 테두리
-	var mt_border := ColorRect.new()
-	mt_border.size = Vector2(170, 212)
-	mt_border.position = Vector2(MOUNTAIN_X - 85, MOUNTAIN_Y - 141)
-	mt_border.color = Color(0.30, 0.28, 0.45, 0.6)
-	mt_border.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(mt_border)
-	move_child(mt_border, get_child_count() - 3)
-
 	# 구역 라벨
-	_add_zone_label("바닥", Vector2(FLOOR_CX - floor_w * 0.5 + 10, FLOOR_Y - CARD_H - CARD_GAP * 0.5 - 20))
-	_add_zone_label("손패", Vector2(320, HAND_Y - CARD_H * 0.5 - 18))
+	_add_zone_label("바닥", Vector2(FLOOR_CX - floor_w * 0.5 + 14, floor_top_y + 7))
+	_add_zone_label("내 패", Vector2(20, 836))
 
 
 func _add_zone_label(text: String, pos: Vector2) -> void:
@@ -98,20 +120,22 @@ func _add_zone_label(text: String, pos: Vector2) -> void:
 # ── 정적 UI (산패 / 수집 현황) ───────────────────────────
 
 func _build_static_ui() -> void:
-	# 산패 카드 더미 그래픽 (3장 겹쳐서 깊이감)
+	# 산패 카드 더미 그래픽
+	var sh_w := 76.0
+	var sh_h := 108.0
+	var stack_cy := MOUNTAIN_Y - 12.0
 	for i in 3:
 		var shadow := ColorRect.new()
-		shadow.size = Vector2(CARD_W - 4, CARD_H - 4)
-		shadow.position = Vector2(MOUNTAIN_X - (CARD_W - 4) * 0.5 + (2 - i) * 3,
-								  MOUNTAIN_Y - CARD_H * 0.5 - 30 + (2 - i) * 3)
+		shadow.size = Vector2(sh_w, sh_h)
+		shadow.position = Vector2(MOUNTAIN_X - sh_w * 0.5 + (2 - i) * 3,
+								   stack_cy - sh_h * 0.5 + (2 - i) * 3)
 		shadow.color = Color(0.18, 0.18, 0.32)
 		shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(shadow)
 
-	# 산패 레이블
 	_mountain_label = Label.new()
 	_mountain_label.text = "산패"
-	_mountain_label.position = Vector2(MOUNTAIN_X - 50, MOUNTAIN_Y - CARD_H * 0.5 - 55)
+	_mountain_label.position = Vector2(MOUNTAIN_X - 50, MOUNTAIN_Y - 105)
 	_mountain_label.size = Vector2(100, 28)
 	_mountain_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_mountain_label.add_theme_color_override("font_color", Color(0.75, 0.75, 0.95))
@@ -119,10 +143,9 @@ func _build_static_ui() -> void:
 	UITheme.apply_pretendard(_mountain_label, 17)
 	add_child(_mountain_label)
 
-	# 산패 수 — 크고 명확하게
 	_mountain_count_label = Label.new()
 	_mountain_count_label.text = "30"
-	_mountain_count_label.position = Vector2(MOUNTAIN_X - 50, MOUNTAIN_Y - CARD_H * 0.5 - 24)
+	_mountain_count_label.position = Vector2(MOUNTAIN_X - 50, MOUNTAIN_Y + 60)
 	_mountain_count_label.size = Vector2(100, 50)
 	_mountain_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_mountain_count_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -131,7 +154,7 @@ func _build_static_ui() -> void:
 	UITheme.apply_pretendard(_mountain_count_label, 36)
 	add_child(_mountain_count_label)
 
-	# 수집 현황 레이블 — 우상단, 항상 노출
+	# 수집 현황 레이블
 	var types        := ["gwang", "ribbon", "animal", "pi"]
 	var label_texts  := ["光 광", "帶 띠", "動 열끗", "皮 피"]
 	var label_colors := [
@@ -164,10 +187,8 @@ func setup_initial(hand: Array, floor: Array, mountain_count: int) -> void:
 
 func _place_hand(hand: Array) -> void:
 	var count := hand.size()
-	# 손패는 ComboTracker(x=22~312) 오른쪽부터 시작, 화면 중앙보다 약간 좌
 	var total_w := count * CARD_W + (count - 1) * CARD_GAP
-	var center_x := 870.0   # 산패 공간 고려해 약간 왼쪽
-	var start_x := center_x - total_w * 0.5 + CARD_W * 0.5
+	var start_x := FLOOR_CX - total_w * 0.5 + CARD_W * 0.5
 	for i in count:
 		var node := _make_card_node(hand[i])
 		node.position = Vector2(start_x + i * (CARD_W + CARD_GAP), HAND_Y)
@@ -201,40 +222,131 @@ func _place_floor(floor_cards: Array) -> void:
 			start_x + col * (CARD_W + CARD_GAP),
 			FLOOR_Y + row * (CARD_H + CARD_GAP) - (rows - 1) * (CARD_H + CARD_GAP) * 0.5
 		)
+		node.scale = Vector2(FLOOR_CARD_SCALE, FLOOR_CARD_SCALE)  # 손패보다 작게
 		node.is_interactive = false
 		add_child(node)
 		_floor_nodes.append(node)
 
 
-# ── 산패 애니메이션 (하단 → 바닥 대각선 이동) ────────────
+# ── 위치 계산 유틸 ───────────────────────────────────────
 
-func animate_mountain_flip(card: CardData.Card, matched: bool) -> void:
+## 바닥에서 특정 월 카드의 위치 반환 (산패 날아가기 대상)
+func get_floor_month_position(month: int) -> Vector2:
+	for node in _floor_nodes:
+		if node.card_data != null and node.card_data.month == month:
+			return node.position
+	return Vector2(FLOOR_CX, FLOOR_Y)
+
+
+## 바닥 카드 n장일 때 마지막 카드가 놓일 위치 계산 (산패 미매칭 날아가기 대상)
+func get_new_floor_card_position(new_floor_size: int) -> Vector2:
+	var count := new_floor_size
+	if count == 0:
+		return Vector2(FLOOR_CX, FLOOR_Y)
+	var cols := mini(count, 8)
+	var rows := ceili(float(count) / float(cols))
+	var total_w := float(cols) * CARD_W + float(cols - 1) * CARD_GAP
+	var start_x := FLOOR_CX - total_w * 0.5 + CARD_W * 0.5
+	var i := count - 1
+	var col := i % cols
+	var row := i / cols
+	return Vector2(
+		start_x + float(col) * (CARD_W + CARD_GAP),
+		FLOOR_Y + float(row) * (CARD_H + CARD_GAP) - float(rows - 1) * (CARD_H + CARD_GAP) * 0.5
+	)
+
+
+# ── 연출 효과 ────────────────────────────────────────────
+
+## 손패 카드 → 바닥 슬롯 날아가기 (손맛 연출)
+## 들기(0.08s) + 기울기 + 날아가기(0.36s) → 비행 중 반투명·축소
+## 총 비행 시간 ≈ 0.44s.  queue_free 는 round.gd 에서 직접 처리.
+func animate_hand_card_fly(card_node: CardNode, target_pos: Vector2) -> void:
+	_hand_nodes.erase(card_node)
+	_reposition_hand()
+
+	card_node.is_interactive = false
+	if card_node._hover_tween != null:
+		card_node._hover_tween.kill()
+	card_node.z_index = 5   # 비행 중 최상위
+
+	var tilt := randf_range(-22.0, 22.0)   # 더 강한 기울기
+	var start_y := card_node.position.y
+
+	# 위치: 살짝 들기 → 목표로 날아가기, 착지 후 z-order 를 바닥 카드 아래로
+	var pos_tween := create_tween().set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+	pos_tween.tween_property(card_node, "position:y", start_y - 26.0, 0.08)
+	pos_tween.tween_property(card_node, "position", target_pos, 0.36)
+	pos_tween.tween_callback(func() -> void:
+		if is_instance_valid(card_node):
+			card_node.z_index = -1   # 바닥 카드가 위에 렌더링 → 아래 패가 보임
+	)
+
+	# 회전: 기울어지며 날아가기 → 착지 직전 펴기
+	var rot_tween := create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	rot_tween.tween_property(card_node, "rotation_degrees", tilt, 0.10)
+	rot_tween.tween_interval(0.22)
+	rot_tween.tween_property(card_node, "rotation_degrees", 0.0, 0.12)
+
+	# 비행 중 반투명 → 아래 바닥 카드가 비쳐 보임
+	var alpha_tween := create_tween().set_ease(Tween.EASE_OUT)
+	alpha_tween.tween_property(card_node, "modulate:a", 0.78, 0.08)
+
+	# 비행하며 축소 → 착지 시 바닥 카드 크기(0.80)에 근접한 0.88
+	var scale_tween := create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	scale_tween.tween_interval(0.08)
+	scale_tween.tween_property(card_node, "scale", Vector2(0.88, 0.88), 0.36)
+
+
+## 산패 → 바닥 날아가기 + 뒤집기 연출
+## target_pos: 날아갈 목표 위치 (산패 미매칭이면 새 바닥 슬롯, 매칭이면 기존 카드 위)
+func animate_mountain_flip(card: CardData.Card, matched: bool, target_pos: Vector2) -> void:
 	var node := _make_card_node(card)
-	node.position = Vector2(MOUNTAIN_X, MOUNTAIN_Y - CARD_H * 0.5)
+	node.position = Vector2(MOUNTAIN_X, MOUNTAIN_Y)
 	node.is_interactive = false
+	node.scale = Vector2(0.0, 1.0)   # 납작 → 뒤집히는 효과
+	node.z_index = 5                  # 항상 최상위 레이어
 	add_child(node)
 
-	# 목적지: 바닥 중앙 or 매칭 시 살짝 위
-	var target_x := FLOOR_CX
-	var target_y := FLOOR_Y if not matched else FLOOR_Y - 80.0
-
-	# 대각선 호 이동 (우하 → 좌상) — 흐름이 눈에 보임
 	var tween := create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	tween.tween_property(node, "position", Vector2(target_x, target_y), 0.45)
+	tween.tween_property(node, "scale:x", 1.0, 0.18)          # 카드 뒤집히며 공개
+	tween.tween_interval(0.15)                                  # 읽을 시간 (짧게)
+	tween.tween_property(node, "position", target_pos, 0.40)   # 목표로 날아가기
 
 	if matched:
-		tween.tween_callback(func() -> void:
-			node.flash_glow()
-		)
-		tween.tween_interval(0.25)
-		tween.tween_callback(func() -> void:
-			node.modulate.a = 0.0
-			node.queue_free()
-		)
-	else:
-		tween.tween_callback(func() -> void:
-			_floor_nodes.append(node)
-		)
+		tween.tween_callback(func() -> void: node.flash_glow())
+		tween.tween_interval(0.45)   # 글로우 감상
+
+	tween.tween_property(node, "modulate:a", 0.0, 0.20)
+	tween.tween_callback(func() -> void: node.queue_free())
+
+
+## 턴 전환 플래시 — 화면이 잠깐 어두워졌다 밝아짐 (손패→산패 구분)
+func flash_turn_transition() -> void:
+	var overlay := ColorRect.new()
+	overlay.size = Vector2(1920, 1080)
+	overlay.position = Vector2.ZERO
+	overlay.color = Color(0.0, 0.0, 0.0, 0.0)
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(overlay)
+
+	var tween := create_tween()
+	tween.tween_property(overlay, "color:a", 0.38, 0.12)
+	tween.tween_property(overlay, "color:a", 0.0, 0.22)
+	tween.tween_callback(func() -> void: overlay.queue_free())
+
+
+## 바닥 카드 매칭 시 "튀기" 효과 — 수집 직전 시각적 피드백
+func animate_floor_hit(month: int) -> void:
+	for node in _floor_nodes:
+		if node.card_data == null or node.card_data.month != month:
+			continue
+		if not is_instance_valid(node):
+			continue
+		var s := FLOOR_CARD_SCALE
+		var tween := create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+		tween.tween_property(node, "scale", Vector2(s * 1.25, s * 1.25), 0.07)
+		tween.tween_property(node, "scale", Vector2(s, s), 0.10)
 
 
 # ── 갱신 메서드 ──────────────────────────────────────────
@@ -254,8 +366,7 @@ func _reposition_hand() -> void:
 	if count == 0:
 		return
 	var total_w := count * CARD_W + (count - 1) * CARD_GAP
-	var center_x := 870.0
-	var start_x := center_x - total_w * 0.5 + CARD_W * 0.5
+	var start_x := FLOOR_CX - total_w * 0.5 + CARD_W * 0.5
 	for i in count:
 		var tween := create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 		tween.tween_property(_hand_nodes[i], "position:x",
@@ -292,7 +403,6 @@ func _flash_label(lbl: Label) -> void:
 
 func update_mountain_count(count: int) -> void:
 	_mountain_count_label.text = str(count)
-	# 카운트 바운스 애니메이션
 	var tween := create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
 	tween.tween_property(_mountain_count_label, "scale", Vector2(1.3, 1.3), 0.0)
 	tween.tween_property(_mountain_count_label, "scale", Vector2.ONE, 0.3)

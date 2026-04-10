@@ -114,12 +114,34 @@ func _on_turn_started(turn_number: int, max_turns: int) -> void:
 
 
 func _on_hand_matched(result: Matching.MatchResult) -> void:
-	# 수집 직전 글로우
-	if _last_played_node != null and is_instance_valid(_last_played_node):
-		_last_played_node.flash_glow()
+	# 매칭 바닥 카드 위치로 날아감 (살짝 랜덤 오프셋 → 자연스러운 겹침)
+	var target := _board.get_floor_month_position(result.hand_card.month)
+	target += Vector2(randf_range(-6.0, 6.0), randf_range(-6.0, 6.0))
+
+	var played_node := _last_played_node
+	_last_played_node = null
+	if played_node != null and is_instance_valid(played_node):
+		_board.animate_hand_card_fly(played_node, target)
 
 	_board.clear_highlights()
-	_remove_played_node()
+
+	# t=0.42s: 도착 직전 바닥 카드 튀기기 시작
+	await get_tree().create_timer(0.42).timeout
+	_board.animate_floor_hit(result.hand_card.month)
+
+	# t=0.97s: 겹침 감상 (~0.55s 겹쳐 있다가 사라짐)
+	await get_tree().create_timer(0.55).timeout
+
+	# 손패 카드 페이드아웃 후 제거
+	if is_instance_valid(played_node):
+		var fade := played_node.create_tween()
+		fade.tween_property(played_node, "modulate:a", 0.0, 0.14)
+		var ref := played_node
+		fade.tween_callback(func() -> void:
+			if is_instance_valid(ref):
+				ref.queue_free()
+		)
+
 	_board.refresh_floor(_round_manager._floor)
 	_board.update_collected(_round_manager._collected)
 	_combo_tracker.update(_round_manager._collected)
@@ -131,14 +153,42 @@ func _on_hand_matched(result: Matching.MatchResult) -> void:
 
 
 func _on_hand_placed(card: CardData.Card) -> void:
+	# 새 바닥 슬롯으로 날아감
+	var target := _board.get_new_floor_card_position(_round_manager._floor.size())
+	target += Vector2(randf_range(-5.0, 5.0), randf_range(-5.0, 5.0))
+
+	var played_node := _last_played_node
+	_last_played_node = null
+	if played_node != null and is_instance_valid(played_node):
+		_board.animate_hand_card_fly(played_node, target)
+
 	_board.clear_highlights()
-	_remove_played_node()
-	_board.refresh_floor(_round_manager._floor)
 	_status.flash("%d월 %s → 바닥에 내려놓았습니다" % [card.month, _card_type_name(card)], 1.2)
+
+	# 착지 후 페이드아웃 → 바닥 카드로 전환
+	await get_tree().create_timer(0.46).timeout
+	if is_instance_valid(played_node):
+		var fade := played_node.create_tween()
+		fade.tween_property(played_node, "modulate:a", 0.0, 0.10)
+		var ref := played_node
+		fade.tween_callback(func() -> void:
+			if is_instance_valid(ref):
+				ref.queue_free()
+		)
+	if is_instance_valid(_board):
+		_board.refresh_floor(_round_manager._floor)
 
 
 func _on_mountain_matched(result: Matching.MatchResult, _chain_count: int, _multiplier: float) -> void:
-	_board.animate_mountain_flip(result.hand_card, true)
+	# 산패 카드가 매칭 바닥 카드 위치로 날아감
+	var target := _board.get_floor_month_position(result.hand_card.month)
+	_board.animate_mountain_flip(result.hand_card, true, target)
+
+	# 카드가 도착할 때까지 대기 (flip 0.18 + pause 0.15 + fly 0.40 = 0.73s)
+	await get_tree().create_timer(0.75).timeout
+	if not is_instance_valid(_board):
+		return
+
 	_board.refresh_floor(_round_manager._floor)
 	_board.update_mountain_count(_round_manager._mountain.size())
 	_board.update_collected(_round_manager._collected)
@@ -148,7 +198,6 @@ func _on_mountain_matched(result: Matching.MatchResult, _chain_count: int, _mult
 	if not chain_label.is_empty():
 		_hud.show_chain(chain_label)
 
-	# 산패 매칭 결과 텍스트
 	var mc := result.hand_card
 	var parts: Array[String] = ["산패 %d월 %s" % [mc.month, _card_type_name(mc)]]
 	for fc in result.floor_cards:
@@ -160,13 +209,20 @@ func _on_mountain_matched(result: Matching.MatchResult, _chain_count: int, _mult
 
 
 func _on_mountain_flip_pending() -> void:
+	_board.flash_turn_transition()   # 손패 → 산패 페이즈 구분 플래시
 	_status.set_text("▼  산패 뒤집는 중...")
 
 
 func _on_mountain_placed(card: CardData.Card) -> void:
-	_board.animate_mountain_flip(card, false)
+	# 산패 카드가 실제 바닥 슬롯 위치로 날아감
+	var target := _board.get_new_floor_card_position(_round_manager._floor.size())
+	_board.animate_mountain_flip(card, false, target)
 	_board.update_mountain_count(_round_manager._mountain.size())
 	_status.flash("%d월 %s → 바닥에 추가됨" % [card.month, _card_type_name(card)], 1.0)
+	# 애니메이션(~1.05s) 완료 후 바닥 갱신
+	await get_tree().create_timer(1.1).timeout
+	if is_instance_valid(_board):
+		_board.refresh_floor(_round_manager._floor)
 
 
 func _on_scoring_complete(_breakdown: Scoring.ScoreBreakdown, _multiplier: float, final_score: int) -> void:
