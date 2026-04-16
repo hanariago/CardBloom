@@ -6,11 +6,16 @@
 - 메인: https://www.notion.so/3397060afba8815e92a7e033414cdb22
 - GDD Part 1: https://www.notion.so/3397060afba8812aa9d8dabb75eef1ef
 - GDD Part 2: https://www.notion.so/3397060afba88105b907fb67233d7c4d
+- 변경 이력: https://www.notion.so/33f7060afba881e981d2f5dffb3cd904
 
 ## 세션 시작 시
 1. 이 파일 읽기
-2. CHANGELOG.md 확인 (마지막 작업 내용)
+2. Notion 변경 이력 확인 (마지막 작업 내용)
 3. 필요 시 Notion GDD 참조
+
+## 세션 종료 시
+- Notion 변경 이력 업데이트 (오늘 작업 내용 추가)
+- 다음 할 일 명시
 
 ## 코딩 규칙
 - GDScript 스타일 가이드 준수 (snake_case, 탭 들여쓰기)
@@ -27,10 +32,14 @@
   - HUD·숫자·보조정보: Pretendard — res://assets/fonts/Pretendard-Regular.otf
 - 글자 크기: 점수카운터 64px / 팝업타이틀 36px / HUD 24px / 카드텍스트 20px / 보조정보 16px
 
-## 현재 마일스톤: M1 프로토타입
-- 코어 루프: 딜링 → 매칭 → 정산 → 고/스톱
-- 주스 연출 (점수 카운터 "두두두두" 애니메이션)
-- 연쇄 매칭 보너스 (2연속×1.5 / 3연속×2 / 4연속+×3)
+## 완료된 마일스톤
+- ✅ M1 프로토타입 (v0.3.0, 2026-04-11): 코어 루프, UI/UX 전면 개선, 손맛 애니메이션
+
+## 현재 마일스톤: M2 연출 & 시스템 확장
+- 고/스톱 연출 강화 (BGM 템포 변화, 카운트다운)
+- 꽃비 시스템 (판 시작 15~20% 확률)
+- 사운드 연결 (카드 플레이/매칭/족보 달성)
+- 상점 — 기운 카드 슬롯 교체 UI (5칸 초과 시)
 
 ## 주의사항
 - Godot 4.x의 GDScript 2.0 문법 사용 (class_name, @export, @onready 등)
