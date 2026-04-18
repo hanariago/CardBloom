@@ -21,6 +21,7 @@ var _coins_label: Label
 var _combo_label: Label
 
 var _combo_tween: Tween
+var _score_pulse_tween: Tween
 
 
 func _ready() -> void:
@@ -125,6 +126,21 @@ func update_turn(current: int, max_turns: int) -> void:
 
 func update_coins(coins: int) -> void:
 	_coins_label.text = "엽전 %d" % coins
+
+
+## 고 모드 — 점수 레이블 붉은 맥박 / 해제 시 원래 색 복귀
+func set_go_mode(active: bool) -> void:
+	if _score_pulse_tween:
+		_score_pulse_tween.kill()
+		_score_pulse_tween = null
+	if active:
+		_score_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.45))
+		_score_pulse_tween = create_tween().set_loops()
+		_score_pulse_tween.tween_property(_score_label, "modulate", Color(1.25, 0.38, 0.38), 0.50)
+		_score_pulse_tween.tween_property(_score_label, "modulate", Color(1.0, 0.75, 0.75), 0.50)
+	else:
+		_score_label.add_theme_color_override("font_color", Color.WHITE)
+		_score_label.modulate = Color.WHITE
 
 
 ## 연쇄 매칭 텍스트 잠깐 표시

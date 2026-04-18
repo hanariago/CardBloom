@@ -13,6 +13,7 @@ var _go_stop_popup: GoStopPopup
 var _current_score: int = 0
 var _last_played_node: CardNode = null
 var _is_first_round: bool = true
+var _in_go_mode: bool = false
 
 
 func _ready() -> void:
@@ -80,6 +81,12 @@ func _connect_signals() -> void:
 
 
 func _start_round() -> void:
+	# 이전 판 고 모드 잔여 정리
+	if _in_go_mode:
+		_board.exit_go_mode()
+		_hud.set_go_mode(false)
+		_in_go_mode = false
+
 	var target := GameManager.get_round_target_score()
 	_hud.update_target(target)
 	_hud.update_coins(GameManager.current_run.total_coins)
@@ -117,6 +124,10 @@ func _on_turn_started(turn_number: int, max_turns: int) -> void:
 	_hud.update_turn(turn_number, max_turns)
 	if not _tutorial.visible:
 		_status.set_text("손패에서 패를 선택하세요")
+	# 고 모드 중 남은 추가 턴 카운트다운
+	if _in_go_mode:
+		var turns_left := max_turns - turn_number
+		_board.animate_countdown(turns_left + 1)   # 현재 턴 포함
 
 
 func _on_hand_matched(result: Matching.MatchResult) -> void:
@@ -257,14 +268,29 @@ func _score_breakdown_short(bd: Scoring.ScoreBreakdown) -> String:
 	return " + ".join(parts) + " = %d점" % bd.total_score
 
 
-func _on_go_stop_resolved(decision: GoStop.Decision, _go_count: int, multiplier: float) -> void:
+func _on_go_stop_resolved(decision: GoStop.Decision, go_count: int, multiplier: float) -> void:
 	_go_stop_popup.hide_popup()
 	if decision == GoStop.Decision.GO:
+		_in_go_mode = true
+		_board.enter_go_mode(go_count)
+		_hud.set_go_mode(true)
 		_hud.show_chain("고! (×%s)" % _mult_str(multiplier))
 		_status.set_text("손패에서 패를 선택하세요")
+	elif decision == GoStop.Decision.STOP:
+		if go_count > 0 and _in_go_mode:
+			_board.animate_go_success(go_count)
+		else:
+			_board.animate_stop_confirmed()
+		_board.exit_go_mode()
+		_hud.set_go_mode(false)
+		_in_go_mode = false
 
 
 func _on_go_failed(_penalty: Dictionary) -> void:
+	_board.animate_go_fail()
+	_board.exit_go_mode()
+	_hud.set_go_mode(false)
+	_in_go_mode = false
 	_hud.show_chain("고 실패...")
 	_status.flash("고 실패! 패널티가 적용됩니다", 2.0)
 	_hud.update_score(0)

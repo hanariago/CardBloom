@@ -36,6 +36,7 @@ signal hand_card_preview_ended()
 
 var _hand_nodes: Array[CardNode] = []
 var _floor_nodes: Array[CardNode] = []
+var _go_overlay: ColorRect = null   # 고 모드 지속 오버레이
 var _mountain_label: Label
 var _mountain_count_label: Label
 var _collected_labels: Dictionary
@@ -319,6 +320,165 @@ func animate_mountain_flip(card: CardData.Card, matched: bool, target_pos: Vecto
 
 	tween.tween_property(node, "modulate:a", 0.0, 0.20)
 	tween.tween_callback(func() -> void: node.queue_free())
+
+
+## 고 모드 진입 — 붉은 오버레이 + 배율 텍스트
+func enter_go_mode(go_count: int) -> void:
+	exit_go_mode()
+	_go_overlay = ColorRect.new()
+	_go_overlay.size = Vector2(1920.0, 1080.0)
+	_go_overlay.position = Vector2.ZERO
+	_go_overlay.color = Color(0.45, 0.04, 0.04, 0.0)
+	_go_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_go_overlay.z_index = 15
+	add_child(_go_overlay)
+
+	var target_alpha := 0.10 + go_count * 0.04   # 고→고고→쓰리고 갈수록 더 어두워짐
+	var ov_tween := create_tween()
+	ov_tween.tween_property(_go_overlay, "color:a", target_alpha, 0.4)
+
+	# 배율 레이블 잠깐 표시
+	var mult_texts := ["", "×2", "×4", "×8"]
+	var lbl := Label.new()
+	lbl.text = mult_texts[mini(go_count, 3)]
+	lbl.size = Vector2(240.0, 100.0)
+	lbl.position = Vector2(FLOOR_CX - 120.0, FLOOR_Y - 220.0)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_color_override("font_color", Color(0.97, 0.64, 0.20))
+	lbl.modulate.a = 0.0
+	lbl.z_index = 16
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.apply_pretendard(lbl, 76)
+	add_child(lbl)
+
+	var lt := create_tween()
+	lt.tween_property(lbl, "modulate:a", 0.90, 0.25)
+	lt.tween_interval(0.8)
+	lt.tween_property(lbl, "modulate:a", 0.0, 0.35)
+	lt.tween_callback(lbl.queue_free)
+
+
+## 고 모드 종료 — 오버레이 페이드아웃
+func exit_go_mode() -> void:
+	if _go_overlay != null and is_instance_valid(_go_overlay):
+		var ref := _go_overlay
+		_go_overlay = null
+		var tween := create_tween()
+		tween.tween_property(ref, "color:a", 0.0, 0.45)
+		tween.tween_callback(ref.queue_free)
+
+
+## 스톱 확정 — 체크마크 팝업 (초록)
+func animate_stop_confirmed() -> void:
+	var lbl := Label.new()
+	lbl.text = "✓  스톱"
+	lbl.size = Vector2(560.0, 100.0)
+	lbl.position = Vector2(FLOOR_CX - 280.0, 400.0)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_color_override("font_color", Color(0.45, 0.92, 0.52))
+	lbl.modulate.a = 0.0
+	lbl.z_index = 25
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.apply_pretendard(lbl, 64)
+	add_child(lbl)
+
+	var tween := create_tween()
+	tween.tween_property(lbl, "modulate:a", 1.0, 0.18)
+	tween.tween_interval(0.7)
+	tween.tween_property(lbl, "modulate:a", 0.0, 0.28)
+	tween.tween_callback(lbl.queue_free)
+
+
+## 고 성공 — 금빛 폭발 텍스트
+func animate_go_success(go_count: int) -> void:
+	var texts := ["", "고 성공!", "고고 성공!", "쓰리고 성공!"]
+	var lbl := Label.new()
+	lbl.text = texts[mini(go_count, 3)]
+	lbl.size = Vector2(900.0, 110.0)
+	lbl.position = Vector2(FLOOR_CX - 450.0, 385.0)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_color_override("font_color", Color(0.97, 0.84, 0.20))
+	lbl.modulate.a = 0.0
+	lbl.scale = Vector2(0.65, 0.65)
+	lbl.pivot_offset = Vector2(450.0, 55.0)
+	lbl.z_index = 28
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.apply_pretendard(lbl, 72)
+	add_child(lbl)
+
+	var tween := create_tween().set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tween.set_parallel(true)
+	tween.tween_property(lbl, "scale", Vector2(1.08, 1.08), 0.28)
+	tween.tween_property(lbl, "modulate:a", 1.0, 0.18)
+	tween.set_parallel(false)
+	tween.tween_property(lbl, "scale", Vector2(1.0, 1.0), 0.12)
+	tween.tween_interval(1.0)
+	tween.tween_property(lbl, "modulate:a", 0.0, 0.35)
+	tween.tween_callback(lbl.queue_free)
+
+
+## 고 실패 — 화면 어두워짐 + 빨간 텍스트
+func animate_go_fail() -> void:
+	var overlay := ColorRect.new()
+	overlay.size = Vector2(1920.0, 1080.0)
+	overlay.position = Vector2.ZERO
+	overlay.color = Color(0.0, 0.0, 0.0, 0.0)
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.z_index = 18
+	add_child(overlay)
+
+	var lbl := Label.new()
+	lbl.text = "고 실패..."
+	lbl.size = Vector2(560.0, 90.0)
+	lbl.position = Vector2(FLOOR_CX - 280.0, 420.0)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_color_override("font_color", Color(0.95, 0.28, 0.28))
+	lbl.modulate.a = 0.0
+	lbl.z_index = 19
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.apply_pretendard(lbl, 62)
+	add_child(lbl)
+
+	var ov_tween := create_tween()
+	ov_tween.tween_property(overlay, "color:a", 0.52, 0.55)
+	ov_tween.tween_callback(func() -> void:
+		var lt := create_tween()
+		lt.tween_property(lbl, "modulate:a", 1.0, 0.3)
+		lt.tween_interval(1.2)
+		lt.tween_property(lbl, "modulate:a", 0.0, 0.4)
+		lt.tween_callback(lbl.queue_free)
+	)
+	ov_tween.tween_interval(2.2)
+	ov_tween.tween_property(overlay, "color:a", 0.0, 0.55)
+	ov_tween.tween_callback(overlay.queue_free)
+
+
+## 고 모드 남은 턴 카운트다운 플래시 (숫자만 크게)
+func animate_countdown(turns_left: int) -> void:
+	if turns_left <= 0:
+		return
+	var lbl := Label.new()
+	lbl.text = str(turns_left)
+	lbl.size = Vector2(200.0, 160.0)
+	lbl.position = Vector2(FLOOR_CX - 100.0, FLOOR_Y - 80.0)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_color_override("font_color", Color(0.97, 0.35, 0.35))
+	lbl.modulate.a = 0.0
+	lbl.z_index = 17
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.apply_pretendard(lbl, 96)
+	add_child(lbl)
+
+	var tween := create_tween().set_ease(Tween.EASE_OUT)
+	tween.tween_property(lbl, "modulate:a", 1.0, 0.08)
+	tween.tween_interval(0.45)
+	tween.tween_property(lbl, "modulate:a", 0.0, 0.30)
+	tween.tween_callback(lbl.queue_free)
 
 
 ## 꽃비 연출 — 꽃잎 낙하 + 안내 배너 (2.8s)
