@@ -40,6 +40,7 @@ signal go_stop_resolved(decision: GoStop.Decision, go_count: int, multiplier: fl
 signal go_failed(penalty: Dictionary)
 
 signal round_complete(final_score: int, coins_earned: int)
+signal flower_rain_triggered(month: int)   # 꽃비 발동 — board에서 연출 재생
 
 # ── 상태 ──────────────────────────────────────────────
 var state: State = State.IDLE
@@ -65,6 +66,7 @@ var _chain: ChainBonus = ChainBonus.new()
 
 var _target_score: int = 0
 var _goal_reached_this_round: bool = false
+var flower_rain_month: int = -1   # 이번 판 꽃비 발동 월 (−1이면 미발동)
 
 
 # ── 공개 API ──────────────────────────────────────────
@@ -145,6 +147,7 @@ func _reset_state() -> void:
 	_base_max_turns = 10
 	_max_turns = 10
 	_goal_reached_this_round = false
+	flower_rain_month = -1
 	_go_stop.reset()
 	_chain.reset()
 
@@ -164,8 +167,36 @@ func _deal() -> void:
 	for i in range(18, _deck.size()):
 		_mountain.append(_deck[i])
 
+	# 꽃비 판정 (dealing_complete 전 — 업데이트된 바닥 패 포함해서 전달)
+	_roll_flower_rain()
+
 	dealing_complete.emit(_hand.duplicate(), _floor.duplicate(), _mountain.size())
+
+	# 꽃비 발동 시 연출 신호 + 애니메이션 대기
+	if flower_rain_month != -1:
+		flower_rain_triggered.emit(flower_rain_month)
+		await get_tree().create_timer(2.8).timeout
+
 	_start_turn()
+
+
+## 꽃비 판정 — 17% 확률로 산패에서 랜덤 월 1장을 바닥에 추가
+func _roll_flower_rain() -> void:
+	if randf() > 0.17:
+		return
+	var available_months: Array[int] = []
+	for card in _mountain:
+		if card.month not in available_months:
+			available_months.append(card.month)
+	if available_months.is_empty():
+		return
+	var chosen_month: int = available_months[randi() % available_months.size()]
+	for i in _mountain.size():
+		if _mountain[i].month == chosen_month:
+			_floor.append(_mountain[i])
+			_mountain.remove_at(i)
+			flower_rain_month = chosen_month
+			return
 
 
 func _start_turn() -> void:
@@ -212,7 +243,7 @@ func _flip_mountain() -> void:
 
 func _end_turn() -> void:
 	var ki_cards: Array = GameManager.current_run.ki_cards if GameManager.current_run else []
-	var breakdown := Scoring.calculate_with_ki(_collected, ki_cards)
+	var breakdown := Scoring.calculate_with_ki(_collected, ki_cards, flower_rain_month)
 	var current_score := int(breakdown.total_score * _go_stop.get_score_multiplier())
 
 	# 고 중에 목표 달성 못하면 실패 체크 (고 선택 후 추가 턴 소진)
@@ -260,7 +291,7 @@ func _score_and_end() -> void:
 	if GameManager.current_run != null:
 		ki_cards = GameManager.current_run.ki_cards
 
-	var breakdown := Scoring.calculate_with_ki(_collected, ki_cards)
+	var breakdown := Scoring.calculate_with_ki(_collected, ki_cards, flower_rain_month)
 	var multiplier := _go_stop.get_score_multiplier()
 	var final_score := int(breakdown.total_score * multiplier)
 

@@ -48,7 +48,8 @@ class ComboEntry:
 
 ## 수집 패로 전체 점수 계산
 ## collected = { "gwang": [...], "ribbon": [...], "animal": [...], "pi": [...] }
-static func calculate(collected: Dictionary) -> ScoreBreakdown:
+## flower_rain_month: 꽃비 발동 월 (−1이면 미발동)
+static func calculate(collected: Dictionary, flower_rain_month: int = -1) -> ScoreBreakdown:
 	var breakdown := ScoreBreakdown.new()
 
 	var gwang_cards: Array = collected.get("gwang", [])
@@ -68,21 +69,35 @@ static func calculate(collected: Dictionary) -> ScoreBreakdown:
 	_check_animal_combos(animal_cards, breakdown)
 	_check_pi_combo(pi_cards, breakdown)
 
+	# 꽃비 보너스 — 해당 월 수집 패 점수만큼 추가 (×2 효과)
+	if flower_rain_month != -1:
+		_apply_flower_rain_bonus(collected, flower_rain_month, breakdown)
+
 	breakdown.finalize()
 	return breakdown
 
 
 ## 기운 카드 효과 포함 점수 계산
-static func calculate_with_ki(collected: Dictionary, ki_cards: Array) -> ScoreBreakdown:
-	var breakdown := calculate(collected)
+static func calculate_with_ki(collected: Dictionary, ki_cards: Array, flower_rain_month: int = -1) -> ScoreBreakdown:
+	var breakdown := calculate(collected, flower_rain_month)
 	# finalize() 전 상태로 되돌려서 ki 적용 후 재계산
 	breakdown.ki_bonus = 0
 	breakdown.ki_multiplier = 1.0
-	# combos에서 ki 항목만 제거 (아직 없으므로 그냥 진행)
 	for ki in ki_cards:
 		(ki as KiCardData).apply_to_breakdown(breakdown, collected)
 	breakdown.finalize()
 	return breakdown
+
+
+## 꽃비 보너스 — 해당 월 수집 패마다 base_score만큼 추가 (피 최소 1점)
+static func _apply_flower_rain_bonus(collected: Dictionary, month: int, bd: ScoreBreakdown) -> void:
+	var bonus := 0
+	for key in collected:
+		for c: CardData.Card in collected[key]:
+			if c.month == month:
+				bonus += maxi(1, c.base_score)
+	if bonus > 0:
+		bd.add_combo("꽃비 ×2 (%d월)" % month, bonus)
 
 
 ## 광 족보

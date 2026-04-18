@@ -321,6 +321,78 @@ func animate_mountain_flip(card: CardData.Card, matched: bool, target_pos: Vecto
 	tween.tween_callback(func() -> void: node.queue_free())
 
 
+## 꽃비 연출 — 꽃잎 낙하 + 안내 배너 (2.8s)
+func animate_flower_rain(month: int) -> void:
+	# 반투명 핑크 오버레이
+	var overlay := ColorRect.new()
+	overlay.size = Vector2(1920.0, 1080.0)
+	overlay.position = Vector2.ZERO
+	overlay.color = Color(0.95, 0.50, 0.65, 0.0)
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.z_index = 20
+	add_child(overlay)
+
+	var ov_tween := create_tween()
+	ov_tween.tween_property(overlay, "color:a", 0.15, 0.4)
+	ov_tween.tween_interval(1.8)
+	ov_tween.tween_property(overlay, "color:a", 0.0, 0.6)
+	ov_tween.tween_callback(overlay.queue_free)
+
+	# 꽃잎 28개 낙하
+	var petal_colors := [
+		Color(0.98, 0.55, 0.70),
+		Color(0.95, 0.75, 0.85),
+		Color(0.93, 0.50, 0.68),
+		Color(1.00, 0.85, 0.90),
+		Color(0.90, 0.40, 0.60),
+	]
+	for i in 28:
+		var petal := ColorRect.new()
+		var sz := float(randi_range(7, 16))
+		petal.size = Vector2(sz, sz)
+		petal.pivot_offset = Vector2(sz * 0.5, sz * 0.5)
+		petal.position = Vector2(randf_range(0.0, 1920.0), randf_range(-140.0, -10.0))
+		petal.color = petal_colors[randi() % petal_colors.size()]
+		petal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		petal.z_index = 22
+		add_child(petal)
+
+		var dur := randf_range(1.6, 2.8)
+		var end_y := randf_range(900.0, 1120.0)
+		var drift_x := petal.position.x + randf_range(-200.0, 200.0)
+
+		var py := create_tween().set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+		py.tween_property(petal, "position:y", end_y, dur)
+		var px := create_tween().set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+		px.tween_property(petal, "position:x", drift_x, dur)
+		var pr := create_tween()
+		pr.tween_property(petal, "rotation", randf_range(-PI, PI), dur)
+		var pa := create_tween()
+		pa.tween_interval(dur * 0.7)
+		pa.tween_property(petal, "modulate:a", 0.0, dur * 0.3)
+		pa.tween_callback(petal.queue_free)
+
+	# 안내 배너 텍스트
+	var banner := Label.new()
+	banner.text = "꽃비!  %d월 패 점수 ×2" % month
+	banner.size = Vector2(820.0, 90.0)
+	banner.position = Vector2(FLOOR_CX - 410.0, 420.0)
+	banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	banner.add_theme_color_override("font_color", Color(1.0, 0.88, 0.92))
+	banner.modulate.a = 0.0
+	banner.z_index = 25
+	banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.apply_serif(banner, 52)
+	add_child(banner)
+
+	var bt := create_tween()
+	bt.tween_property(banner, "modulate:a", 1.0, 0.4)
+	bt.tween_interval(1.8)
+	bt.tween_property(banner, "modulate:a", 0.0, 0.5)
+	bt.tween_callback(banner.queue_free)
+
+
 ## 턴 전환 플래시 — 화면이 잠깐 어두워졌다 밝아짐 (손패→산패 구분)
 func flash_turn_transition() -> void:
 	var overlay := ColorRect.new()

@@ -67,6 +67,7 @@ func _connect_signals() -> void:
 	_round_manager.go_stop_resolved.connect(_on_go_stop_resolved)
 	_round_manager.go_failed.connect(_on_go_failed)
 	_round_manager.round_complete.connect(_on_round_complete)
+	_round_manager.flower_rain_triggered.connect(_on_flower_rain)
 
 	_board.hand_card_clicked.connect(_on_hand_card_selected)
 	_board.hand_card_preview.connect(_on_hand_preview)
@@ -100,6 +101,11 @@ func _on_dealing_complete(hand: Array, floor: Array, mountain_count: int) -> voi
 		_status.set_text("")
 	else:
 		_status.set_text("손패에서 패를 선택하세요")
+
+
+func _on_flower_rain(month: int) -> void:
+	_board.animate_flower_rain(month)
+	_status.flash("꽃비!  %d월 패가 바닥에 추가됩니다  —  %d월 패 점수 ×2" % [month, month], 2.6)
 
 
 func _on_tutorial_closed() -> void:
@@ -234,7 +240,7 @@ func _on_goal_reached(current_score: int, target_score: int) -> void:
 	_current_score = current_score
 	# 점수 내역 한 줄 요약
 	var ki_cards: Array = GameManager.current_run.ki_cards
-	var breakdown := Scoring.calculate_with_ki(_round_manager._collected, ki_cards)
+	var breakdown := Scoring.calculate_with_ki(_round_manager._collected, ki_cards, _round_manager.flower_rain_month)
 	var why := _score_breakdown_short(breakdown)
 	_status.set_text("목표 %d점 달성! (%s)  →  고 또는 스톱 선택" % [target_score, why])
 	_go_stop_popup.show_popup(current_score, target_score, _round_manager._go_stop)
@@ -307,7 +313,7 @@ func _remove_played_node() -> void:
 
 func _refresh_score() -> void:
 	var ki_cards: Array = GameManager.current_run.ki_cards
-	var breakdown := Scoring.calculate_with_ki(_round_manager._collected, ki_cards)
+	var breakdown := Scoring.calculate_with_ki(_round_manager._collected, ki_cards, _round_manager.flower_rain_month)
 	var mult := _round_manager._go_stop.get_score_multiplier()
 	_hud.update_score(int(breakdown.total_score * mult))
 
@@ -394,7 +400,7 @@ func _card_type_name(card: CardData.Card) -> String:
 ## 점수 변화 팝업
 func _show_score_delta() -> void:
 	var ki_cards: Array = GameManager.current_run.ki_cards
-	var breakdown := Scoring.calculate_with_ki(_round_manager._collected, ki_cards)
+	var breakdown := Scoring.calculate_with_ki(_round_manager._collected, ki_cards, _round_manager.flower_rain_month)
 	var mult := _round_manager._go_stop.get_score_multiplier()
 	var new_score := int(breakdown.total_score * mult)
 	var delta := new_score - _current_score
