@@ -302,6 +302,12 @@ func _score_and_end() -> void:
 	var coins: int = GameManager.convert_score_to_coins(excess)
 	GameManager.add_coins(coins)
 
+	# 기운 카드 판 종료 보너스 (먹보 등)
+	for ki in ki_cards:
+		var ki_coins: int = (ki as KiCardData).apply_end_of_round_coins(_collected)
+		if ki_coins > 0:
+			GameManager.add_coins(ki_coins)
+
 	state = State.COMPLETE
 	round_complete.emit(final_score, coins)
 
