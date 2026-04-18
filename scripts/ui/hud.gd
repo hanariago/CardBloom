@@ -19,6 +19,7 @@ var _target_label: Label
 var _turn_label: Label
 var _coins_label: Label
 var _combo_label: Label
+var _round_label: Label
 
 var _combo_tween: Tween
 var _score_pulse_tween: Tween
@@ -46,8 +47,12 @@ func _build_ui() -> void:
 	_target_label = _make_label("목표: 0", Vector2(1220, 14), 30)
 	_target_label.add_theme_color_override("font_color", Color(0.85, 0.70, 0.35))
 
+	# 판 번호 (좌측 끝)
+	_round_label = _make_label("1 / 13판", Vector2(30, 14), 24)
+	_round_label.add_theme_color_override("font_color", Color(0.85, 0.70, 0.35))
+
 	# 턴 (좌측)
-	_turn_label = _make_label("턴 1 / 10", Vector2(340, 14), 30)
+	_turn_label = _make_label("턴 1 / 10", Vector2(220, 14), 30)
 
 	# 엽전 (우측)
 	_coins_label = _make_label("엽전 0", Vector2(1530, 14), 28)
@@ -126,6 +131,10 @@ func update_turn(current: int, max_turns: int) -> void:
 
 func update_coins(coins: int) -> void:
 	_coins_label.text = "엽전 %d" % coins
+
+
+func update_round(round_number: int, max_rounds: int) -> void:
+	_round_label.text = "%d / %d판" % [round_number, max_rounds]
 
 
 ## 고 모드 — 점수 레이블 붉은 맥박 / 해제 시 원래 색 복귀

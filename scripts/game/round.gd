@@ -87,10 +87,12 @@ func _start_round() -> void:
 		_hud.set_go_mode(false)
 		_in_go_mode = false
 
+	var run := GameManager.current_run
 	var target := GameManager.get_round_target_score()
+	_hud.update_round(run.round_number, 13)
 	_hud.update_target(target)
-	_hud.update_coins(GameManager.current_run.total_coins)
-	_hud.update_ki_slots(GameManager.current_run.ki_cards)
+	_hud.update_coins(run.total_coins)
+	_hud.update_ki_slots(run.ki_cards)
 	_round_manager.start_round(target)
 
 
@@ -298,7 +300,12 @@ func _on_go_failed(_penalty: Dictionary) -> void:
 
 func _on_round_complete(final_score: int, _coins_earned: int) -> void:
 	_hud.update_coins(GameManager.current_run.total_coins)
-	if GameManager.current_run.round_number < 13:
+	var target := GameManager.get_round_target_score()
+	if final_score < target:
+		_show_game_over(final_score, target)
+	elif GameManager.current_run.round_number >= 13:
+		_show_run_clear(final_score)
+	else:
 		_go_to_shop(final_score)
 
 
@@ -451,3 +458,79 @@ func _on_shop_closed() -> void:
 
 func _mult_str(mult: float) -> String:
 	return str(int(mult)) if mult == int(mult) else "%.1f" % mult
+
+
+# ── 런 종료 화면 ──────────────────────────────────────
+
+func _show_game_over(final_score: int, target: int) -> void:
+	_show_run_end_overlay(false, final_score, target)
+
+
+func _show_run_clear(final_score: int) -> void:
+	_show_run_end_overlay(true, final_score, GameManager.get_round_target_score())
+
+
+func _show_run_end_overlay(success: bool, final_score: int, target: int) -> void:
+	var layer := CanvasLayer.new()
+	add_child(layer)
+
+	var bg := ColorRect.new()
+	bg.size = Vector2(1920, 1080)
+	bg.color = Color(0, 0, 0, 0.0)
+	layer.add_child(bg)
+
+	var tween := create_tween()
+	tween.tween_property(bg, "color:a", 0.78, 0.4)
+
+	# 중앙 패널
+	var panel := ColorRect.new()
+	panel.size = Vector2(680, 380)
+	panel.position = Vector2(620, 350)
+	panel.color = Color(0.08, 0.08, 0.18, 0.97)
+	panel.modulate.a = 0.0
+	layer.add_child(panel)
+	tween.tween_property(panel, "modulate:a", 1.0, 0.3)
+
+	# 타이틀
+	var title := Label.new()
+	title.position = Vector2(620, 380)
+	title.size = Vector2(680, 80)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.apply_serif(title, 52, true)
+	if success:
+		title.text = "런 클리어!"
+		title.add_theme_color_override("font_color", Color(0.95, 0.82, 0.35))
+	else:
+		title.text = "게임 오버"
+		title.add_theme_color_override("font_color", Color(0.95, 0.35, 0.35))
+	layer.add_child(title)
+
+	# 점수 정보
+	var info := Label.new()
+	info.position = Vector2(620, 472)
+	info.size = Vector2(680, 80)
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.apply_pretendard(info, 26)
+	info.add_theme_color_override("font_color", Color.WHITE)
+	if success:
+		info.text = "13판 완주!\n최종 점수: %d점  |  보유 엽전: %d" % [
+			final_score, GameManager.current_run.total_coins
+		]
+	else:
+		info.text = "%d판 목표 %d점 미달 (획득 %d점)\n보유 엽전: %d" % [
+			GameManager.current_run.round_number, target, final_score,
+			GameManager.current_run.total_coins
+		]
+	layer.add_child(info)
+
+	# 다시 시작 버튼
+	var btn := Button.new()
+	btn.text = "다시 시작"
+	btn.size = Vector2(220, 54)
+	btn.position = Vector2(850, 590)
+	btn.add_theme_font_size_override("font_size", 24)
+	btn.pressed.connect(func() -> void:
+		GameManager.start_new_run()
+		get_tree().reload_current_scene()
+	)
+	layer.add_child(btn)
