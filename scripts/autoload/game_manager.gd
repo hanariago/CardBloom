@@ -17,6 +17,7 @@ class RunState:
 	var ki_cards: Array = []           # 장착 기운 카드 (최대 5)
 	var ascension_level: int = 0       # 어센션 단계
 	var high_score: int = 0            # 이번 런 최고 점수
+	var removed_card_specs: Array = [] # 영구 제거 카드 [{month, type}]
 
 	func _init() -> void:
 		round_number = 1
@@ -24,6 +25,7 @@ class RunState:
 		ki_cards = []
 		ascension_level = 0
 		high_score = 0
+		removed_card_specs = []
 
 
 func _ready() -> void:

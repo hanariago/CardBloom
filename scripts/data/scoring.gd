@@ -36,6 +36,11 @@ class ScoreBreakdown:
 	func finalize() -> void:
 		total_score = int((base_score + combo_bonus + ki_bonus) * ki_multiplier)
 
+	## 정산 후 추가 플랫 보너스 (숨겨진 족보·연쇄 등 — ki_multiplier 미적용)
+	func add_late_bonus(name: String, points: int) -> void:
+		combos.append(ComboEntry.new(name, points))
+		total_score += points
+
 
 class ComboEntry:
 	var name: String

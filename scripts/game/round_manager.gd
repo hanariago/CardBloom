@@ -152,7 +152,8 @@ func _reset_state() -> void:
 func _deal() -> void:
 	state = State.DEALING
 
-	_deck = CardData.shuffle_deck(CardData.create_deck())
+	var removed: Array = GameManager.current_run.removed_card_specs if GameManager.current_run else []
+	_deck = CardData.shuffle_deck(CardData.create_deck_filtered(removed))
 
 	# 손패 10장
 	for i in 10:
@@ -289,6 +290,15 @@ func _score_and_end() -> void:
 		ki_cards = GameManager.current_run.ki_cards
 
 	var breakdown := Scoring.calculate_with_ki(_collected, ki_cards, flower_rain_month)
+
+	# 연쇄 점수 보너스 (ki_multiplier 미적용)
+	if _chain.chain_score_bonus > 0:
+		breakdown.add_late_bonus("⚡ 연쇄 보너스", _chain.chain_score_bonus)
+
+	# 숨겨진 족보 보너스
+	for hc: HiddenCombo in HiddenCombo.check_all(_collected):
+		breakdown.add_late_bonus("✨ %s" % hc.display_name, hc.bonus)
+
 	var multiplier := _go_stop.get_score_multiplier()
 	var final_score := int(breakdown.total_score * multiplier)
 

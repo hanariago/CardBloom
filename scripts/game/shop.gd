@@ -13,6 +13,9 @@ var _reroll_cost: int = 1
 var _reroll_count: int = 0
 var _pending_ki: KiCardData = null     # 슬롯 교체 대기 중인 신규 카드
 var _exchange_panel: Control = null    # 슬롯 교체 선택 UI
+var _remove_panel: Control = null      # 패 제거 선택 UI
+
+const REMOVE_COST := 3
 
 # UI 노드
 var _panel: Control
@@ -85,8 +88,16 @@ func _build_ui() -> void:
 	_panel.add_child(_card_container)
 
 	# 하단 버튼
+	var remove_btn := Button.new()
+	remove_btn.position = Vector2(40, 480)
+	remove_btn.size = Vector2(220, 48)
+	remove_btn.add_theme_font_size_override("font_size", 18)
+	remove_btn.pressed.connect(_on_remove_card)
+	_panel.add_child(remove_btn)
+	_refresh_remove_btn(remove_btn)
+
 	_reroll_btn = Button.new()
-	_reroll_btn.position = Vector2(320, 480)
+	_reroll_btn.position = Vector2(360, 480)
 	_reroll_btn.size = Vector2(160, 48)
 	_reroll_btn.add_theme_font_size_override("font_size", 20)
 	_reroll_btn.pressed.connect(_on_reroll)
@@ -95,7 +106,7 @@ func _build_ui() -> void:
 
 	_skip_btn = Button.new()
 	_skip_btn.text = "스킵 →"
-	_skip_btn.position = Vector2(680, 480)
+	_skip_btn.position = Vector2(740, 480)
 	_skip_btn.size = Vector2(160, 48)
 	_skip_btn.add_theme_font_size_override("font_size", 20)
 	_skip_btn.pressed.connect(_on_skip)
@@ -359,6 +370,163 @@ func _close_exchange_ui() -> void:
 	if _exchange_panel != null and is_instance_valid(_exchange_panel):
 		_exchange_panel.queue_free()
 		_exchange_panel = null
+
+
+func _refresh_remove_btn(btn: Button) -> void:
+	var coins := GameManager.current_run.total_coins if GameManager.current_run else 0
+	var removable := _get_removable_specs()
+	btn.text = "패 제거 🪙%d" % REMOVE_COST
+	btn.disabled = coins < REMOVE_COST or removable.is_empty()
+	btn.modulate = Color(1.0, 0.85, 0.85) if not btn.disabled else Color(1, 1, 1, 0.4)
+
+
+func _get_removable_specs() -> Array:
+	var deck := CardData.create_deck()
+	var seen := {}
+	var specs: Array = []
+	var already_removed: Array = GameManager.current_run.removed_card_specs if GameManager.current_run else []
+
+	for c: CardData.Card in deck:
+		var key := "%d_%d" % [c.month, int(c.type)]
+		if key in seen:
+			continue
+		seen[key] = true
+
+		var removed := false
+		for spec: Dictionary in already_removed:
+			if spec["month"] == c.month and spec["type"] == int(c.type):
+				removed = true
+				break
+		if not removed:
+			specs.append({"month": c.month, "type": int(c.type), "label": c.label})
+	return specs
+
+
+func _on_remove_card() -> void:
+	if not GameManager.spend_coins(REMOVE_COST):
+		return
+	_show_remove_ui()
+
+
+func _show_remove_ui() -> void:
+	_remove_panel = Control.new()
+	add_child(_remove_panel)
+
+	var bg := ColorRect.new()
+	bg.size = Vector2(1920, 1080)
+	bg.color = Color(0, 0, 0, 0.60)
+	_remove_panel.add_child(bg)
+
+	const PX := 380.0; const PY := 160.0
+	const PW := 1160.0; const PH := 720.0
+
+	var panel := ColorRect.new()
+	panel.size = Vector2(PW, PH)
+	panel.position = Vector2(PX, PY)
+	panel.color = Color(0.08, 0.08, 0.17, 0.98)
+	panel.modulate.a = 0.0
+	_remove_panel.add_child(panel)
+
+	var title := Label.new()
+	title.text = "어떤 카드를 덱에서 제거할까요?"
+	title.position = Vector2(PX + 40, PY + 18)
+	title.size = Vector2(PW - 80, 40)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", Color.WHITE)
+	_remove_panel.add_child(title)
+
+	var hint := Label.new()
+	hint.text = "선택한 카드는 이 런의 모든 덱에서 영구 제거됩니다."
+	hint.position = Vector2(PX + 40, PY + 60)
+	hint.size = Vector2(PW - 80, 28)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 16)
+	hint.modulate = Color(1, 1, 1, 0.55)
+	_remove_panel.add_child(hint)
+
+	# 스크롤 가능한 카드 목록
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(PX + 30, PY + 98)
+	scroll.size = Vector2(PW - 60, PH - 164)
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_remove_panel.add_child(scroll)
+
+	var vbox := VBoxContainer.new()
+	vbox.custom_minimum_size.x = PW - 80
+	vbox.add_theme_constant_override("separation", 6)
+	scroll.add_child(vbox)
+
+	var specs := _get_removable_specs()
+	for spec: Dictionary in specs:
+		vbox.add_child(_make_remove_row(spec))
+
+	# 취소 버튼
+	var cancel := Button.new()
+	cancel.text = "취소 (코인 환불)"
+	cancel.size = Vector2(220, 44)
+	cancel.position = Vector2(PX + PW * 0.5 - 110, PY + PH - 54)
+	cancel.add_theme_font_size_override("font_size", 18)
+	cancel.pressed.connect(_on_remove_cancelled)
+	_remove_panel.add_child(cancel)
+
+	var tween := create_tween()
+	tween.tween_property(panel, "modulate:a", 1.0, 0.2)
+
+
+func _make_remove_row(spec: Dictionary) -> Control:
+	var month: int = spec["month"]
+	var type_int: int = spec["type"]
+	var label: String = spec["label"]
+
+	var type_name := ""
+	match type_int:
+		CardData.Type.GWANG:      type_name = "광"
+		CardData.Type.RIBBON:     type_name = "띠"
+		CardData.Type.ANIMAL:     type_name = "열끗"
+		CardData.Type.PI:         type_name = "피"
+		CardData.Type.DOUBLE_PI:  type_name = "쌍피"
+
+	var row := HBoxContainer.new()
+	row.custom_minimum_size.y = 40
+	row.add_theme_constant_override("separation", 12)
+
+	var lbl := Label.new()
+	lbl.text = "%d월  %s  (%s)" % [month, type_name, label]
+	lbl.custom_minimum_size.x = 360
+	lbl.add_theme_font_size_override("font_size", 18)
+	lbl.add_theme_color_override("font_color", Color.WHITE)
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(lbl)
+
+	var btn := Button.new()
+	btn.text = "제거"
+	btn.custom_minimum_size = Vector2(90, 36)
+	btn.add_theme_font_size_override("font_size", 16)
+	btn.pressed.connect(func() -> void: _on_remove_confirmed(spec))
+	row.add_child(btn)
+
+	return row
+
+
+func _on_remove_confirmed(spec: Dictionary) -> void:
+	if GameManager.current_run == null:
+		return
+	GameManager.current_run.removed_card_specs.append(spec)
+	_close_remove_ui()
+	_close()
+
+
+func _on_remove_cancelled() -> void:
+	GameManager.add_coins(REMOVE_COST)
+	_close_remove_ui()
+	_refresh_coins_label()
+
+
+func _close_remove_ui() -> void:
+	if _remove_panel != null and is_instance_valid(_remove_panel):
+		_remove_panel.queue_free()
+		_remove_panel = null
 
 
 func _on_reroll() -> void:

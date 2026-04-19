@@ -5,6 +5,7 @@ extends RefCounted
 ## 산패 뒤집기(턴B)에서 연속 매칭 성공 시 배율 상승
 
 var _consecutive_count: int = 0
+var chain_score_bonus: int = 0  # 이번 판 연쇄로 쌓인 점수 보너스 합계
 
 ## 배율 텍스트 (연출용)
 const CHAIN_LABELS := {
@@ -17,6 +18,12 @@ const CHAIN_LABELS := {
 func record_flip(matched: bool) -> float:
 	if matched:
 		_consecutive_count += 1
+		match _consecutive_count:
+			2: chain_score_bonus += 8
+			3: chain_score_bonus += 15
+			_:
+				if _consecutive_count >= 4:
+					chain_score_bonus += 25
 	else:
 		_consecutive_count = 0
 	return get_multiplier()
@@ -58,3 +65,4 @@ func get_bonus_coins() -> int:
 ## 리셋 (판 시작 시 호출)
 func reset() -> void:
 	_consecutive_count = 0
+	chain_score_bonus = 0

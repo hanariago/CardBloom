@@ -130,3 +130,16 @@ static func get_cards_by_month(deck: Array[Card], month: int) -> Array[Card]:
 ## 유형별 카드 조회
 static func get_cards_by_type(deck: Array[Card], type: Type) -> Array[Card]:
 	return deck.filter(func(c: Card) -> bool: return c.type == type)
+
+
+## 영구 제거 목록 기반 필터링 덱 생성
+## removed: [{month: int, type: int}, ...] — RunState.removed_card_specs
+static func create_deck_filtered(removed: Array) -> Array[Card]:
+	if removed.is_empty():
+		return create_deck()
+	return create_deck().filter(func(c: Card) -> bool:
+		for spec: Dictionary in removed:
+			if c.month == spec["month"] and c.type == spec["type"]:
+				return false
+		return true
+	)
