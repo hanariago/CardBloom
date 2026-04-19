@@ -338,12 +338,6 @@ func _on_hand_preview_ended() -> void:
 
 # ── 헬퍼 ────────────────────────────────────────────
 
-func _remove_played_node() -> void:
-	if _last_played_node != null:
-		_board.remove_from_hand(_last_played_node)
-		_last_played_node = null
-
-
 func _refresh_score() -> void:
 	var ki_cards: Array = GameManager.current_run.ki_cards
 	var breakdown := Scoring.calculate_with_ki(_round_manager._collected, ki_cards, _round_manager.flower_rain_month)

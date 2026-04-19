@@ -28,9 +28,6 @@ signal hand_placed(card: CardData.Card)                 # 매칭 없이 바닥�
 signal mountain_matched(result: Matching.MatchResult, chain_count: int, multiplier: float)
 signal mountain_placed(card: CardData.Card)             # 매칭 없이 바닥에 놓임
 
-## 카드 수집
-signal cards_collected(cards: Array, is_ssok: bool, chain_label: String)
-
 ## 정산
 signal scoring_complete(breakdown: Scoring.ScoreBreakdown, go_multiplier: float, final_score: int)
 signal goal_reached(current_score: int, target_score: int)
@@ -325,6 +322,12 @@ func _handle_go_fail() -> void:
 		# 절반 차감
 		var half := GameManager.current_run.total_coins / 2
 		GameManager.spend_coins(half)
+
+	# 기운 카드 랜덤 소실 (쓰리고 실패)
+	if penalty.get("ki_card_lost", false) and GameManager.current_run != null:
+		var ki_cards: Array = GameManager.current_run.ki_cards
+		if not ki_cards.is_empty():
+			ki_cards.remove_at(randi() % ki_cards.size())
 
 	state = State.COMPLETE
 	round_complete.emit(0, 0)
